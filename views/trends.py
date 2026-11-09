@@ -99,5 +99,5 @@ with right:
         ",.0f",
     )
     st.caption(
-        f"Range revenue {money(s.totals.revenue)}, of which {money(s.totals.cancelled_value)} was cancelled. The dotted line marks the selected week; amber diamonds mark flagged weeks."
+        f"Range revenue {money(s.totals.revenue)}; cancellations in range {money(s.totals.cancelled_value)}. The dotted line marks the selected week; amber diamonds mark flagged weeks."
     )

@@ -10,7 +10,7 @@ A weekly KPI review for an online retailer, built in Streamlit on 53 weeks of re
 
 | Page | What you see |
 | --- | --- |
-| Overview | 10 KPI cards for the selected week with the change vs the previous week; each card's ⓘ shows its formula and inputs. The week's flags with their reason, top 5 products and countries, and the saved weekly summary |
+| Overview | 10 KPI cards for the selected week with the change vs the previous week; each card's ? shows its formula and inputs. The week's flags with their reason, top 5 products and countries, and the saved weekly summary |
 | Trends | Revenue (with revenue after cancellations and flagged weeks marked), orders, new vs returning customers, cancellation rate |
 | Flagged weeks | One row per flag: the week, the rule and the reason with its numbers |
 | Weekly table | The full weekly KPI table for the range, with a CSV download |
@@ -50,6 +50,7 @@ These weekly figures match an earlier, independently written implementation of t
 
 - 32 acceptance tests, one per acceptance criterion in `specs/retail-kpi-dashboard.md`. The core tests run on a 15-line fixture whose every value was worked out by hand first (`docs/test-cases.md`). The app tests run every page through Streamlit's `AppTest`: defaults, a preset moving the KPIs, Reset, the same KPI on every page, a bad date range, the week picker, help text, the summary label, the flagged page, the CSV download, attribution, the charts, and no network use.
 - 293 unit tests on the calc core: rounding boundaries, cleaning rules, country filters, flag thresholds, CSV, and real-data invariants over all 41 filter values × 53 weeks. The invariants include revenue after cancellations = revenue − cancelled, UK + outside UK = all countries, and the sum of single countries = all countries.
+- 60 app tests through `AppTest`: every preset, Custom and Reset, week fallback when the range changes, sparse countries on all 5 pages, every card's value, delta and help text against the core, and the CSV download bytes against the core.
 - Rebuilding `data/derived/` from the raw file gives byte-identical tables.
 
 ## Run it yourself

@@ -15,7 +15,7 @@ PRESETS = {
 }
 CUSTOM = "Custom"
 SUNDAY = timedelta(days=6)
-cached_scenario = st.cache_data(show_spinner=False)(run_scenario)
+cached_scenario = st.cache_data(show_spinner=False, max_entries=256)(run_scenario)
 
 
 def apply_preset() -> None:
@@ -93,6 +93,10 @@ with st.sidebar:
         format="YYYY-MM-DD",
     )
     st.selectbox("Country", countries(), key="country", on_change=mark_custom)
+    week_slot = st.container()
+    st.button("Reset to Full year", key="reset", on_click=reset, width="stretch")
+    st.divider()
+    st.caption("Data: UCI Online Retail II (Chen 2012), CC BY 4.0")
     dates = st.session_state.dates
     if len(dates) != 2:
         st.error("Pick both a start and an end date.")
@@ -117,16 +121,9 @@ with st.sidebar:
     ]
     if st.session_state.get("week") not in options:
         st.session_state.week = (full or options)[-1]
-    flagged = {w.week_start for w in weeks if w.flags}
-    st.selectbox(
-        "Week",
-        options,
-        key="week",
-        format_func=lambda d: f"{d} – {d + SUNDAY}{'  ⚑' if d in flagged else ''}",
+    week_slot.selectbox(
+        "Week", options, key="week", format_func=lambda d: f"{d} – {d + SUNDAY}"
     )
-    st.button("Reset to Full year", key="reset", on_click=reset, width="stretch")
-    st.divider()
-    st.caption("Data: UCI Online Retail II (Chen 2012), CC BY 4.0")
 
 st.session_state.scenario = cached_scenario(
     probe.model_copy(update={"week": st.session_state.week})

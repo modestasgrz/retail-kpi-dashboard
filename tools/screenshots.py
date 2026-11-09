@@ -35,6 +35,17 @@ def choose(page: Page, label: str, option: str) -> None:
     settle(page)
 
 
+def shoot(page: Page, path: Path, width: int) -> None:
+    """Streamlit scrolls inside its main container, so grow the viewport to the content before the screenshot."""
+    height = page.evaluate(
+        "document.querySelector('[data-testid=\"stMain\"]').scrollHeight"
+    )
+    page.set_viewport_size({"width": width, "height": max(900, height)})
+    page.wait_for_timeout(800)
+    page.screenshot(path=path)
+    page.set_viewport_size({"width": width, "height": 900})
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://127.0.0.1:8780")
@@ -50,17 +61,13 @@ def main(argv: list[str] | None = None) -> None:
             for name, path in PAGES.items():
                 page.goto(f"{args.url}/{path}")
                 settle(page)
-                page.screenshot(path=args.out / f"{name}-{width}.png", full_page=True)
+                shoot(page, args.out / f"{name}-{width}.png", width)
             page.goto(args.url)
             settle(page)
             choose(page, "Week", "2011-09-19")
-            page.screenshot(
-                path=args.out / f"overview-week-2011-09-19-{width}.png", full_page=True
-            )
+            shoot(page, args.out / f"overview-week-2011-09-19-{width}.png", width)
             choose(page, "Preset", "UK only")
-            page.screenshot(
-                path=args.out / f"overview-uk-only-{width}.png", full_page=True
-            )
+            shoot(page, args.out / f"overview-uk-only-{width}.png", width)
             page.close()
         browser.close()
     logger.info(

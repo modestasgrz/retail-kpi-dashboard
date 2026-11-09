@@ -15,4 +15,4 @@ h1 { font-weight: 650; letter-spacing: -0.01em; }
 [data-testid="stMetricValue"] { font-variant-numeric: tabular-nums; font-size: 1.6rem; }
 [data-testid="stSidebar"] { border-right: 1px solid #22324F; }
 [data-testid="stCaptionContainer"] { color: #8B9AB4; }
-.st-key-strip [data-testid="stMetric"] { background: #0F1A30; }
+.st-key-strip [data-testid="stMetric"] { background: #0B1426; min-height: 0; }

@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import cast
+
 import pandas as pd
 import streamlit as st
 
@@ -17,25 +20,39 @@ st.download_button(
 st.caption(
     "The CSV holds raw numbers (2 decimals, no thousands separators) for spreadsheets; the screen uses £ and percentages."
 )
+columns = {
+    "Revenue": ("revenue", money),
+    "Revenue vs prev.": ("revenue_wow", change),
+    "Orders": ("orders", count),
+    "Orders vs prev.": ("orders_wow", change),
+    "Avg order": ("aov", money2),
+    "Units": ("units", count),
+    "Customers": ("customers", count),
+    "New": ("new_customers", count),
+    "Returning": ("returning_customers", count),
+    "Cancellation rate": ("cancellation_rate", pct),
+    "Cancelled": ("cancelled_value", money),
+    "After cancellations": ("net_revenue", money),
+}
+table = pd.DataFrame(
+    {
+        "Week": [str(w.week_start) for w in s.weeks],
+        **{
+            name: [getattr(w, key) for w in s.weeks]
+            for name, (key, _) in columns.items()
+        },
+        "Flags": [", ".join(fl.rule for fl in w.flags) for w in s.weeks],
+    }
+)
 st.dataframe(
-    pd.DataFrame(
+    table.style.format(
         {
-            "Week": [str(w.week_start) for w in s.weeks],
-            "Revenue": [money(w.revenue) for w in s.weeks],
-            "Revenue vs prev.": [change(w.revenue_wow) for w in s.weeks],
-            "Orders": [count(w.orders) for w in s.weeks],
-            "Orders vs prev.": [change(w.orders_wow) for w in s.weeks],
-            "Avg order": [money2(w.aov) for w in s.weeks],
-            "Units": [count(w.units) for w in s.weeks],
-            "Customers": [count(w.customers) for w in s.weeks],
-            "New": [count(w.new_customers) for w in s.weeks],
-            "Returning": [count(w.returning_customers) for w in s.weeks],
-            "Cancellation rate": [pct(w.cancellation_rate) for w in s.weeks],
-            "Cancelled": [money(w.cancelled_value) for w in s.weeks],
-            "After cancellations": [money(w.net_revenue) for w in s.weeks],
-            "Flags": [", ".join(fl.rule for fl in w.flags) for w in s.weeks],
-        }
+            name: cast(Callable[[object], str], fmt)
+            for name, (_, fmt) in columns.items()
+        },
+        na_rep="n/a",
     ),
+    placeholder="n/a",
     hide_index=True,
     width="stretch",
     height=560,

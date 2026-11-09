@@ -1,4 +1,5 @@
-from typing import Literal
+from collections.abc import Callable
+from typing import Literal, cast
 
 import pandas as pd
 import streamlit as st
@@ -64,15 +65,17 @@ cards: list[tuple[str, str, str, str, Literal["normal", "inverse"]]] = [
 st.subheader("Selected week vs previous week")
 for row in (cards[:5], cards[5:]):
     for col, (label, value, delta, key, color) in zip(st.columns(5), row, strict=True):
+        none = delta == "n/a"
         col.metric(
             label,
             value,
-            None if delta == "n/a" else delta,
-            delta_color=color,
+            delta,
+            delta_color="off" if none else color,
+            delta_arrow="off" if none else "auto",
             help=s.sources[key],
         )
 st.caption(
-    "Hover the ⓘ on a card for its formula and inputs. A change shows n/a when the previous week had no base to compare with."
+    "Hover the ? on a card for its formula and inputs. A change shows n/a when the previous week had no base to compare with."
 )
 
 left, right = st.columns(2)
@@ -87,9 +90,9 @@ for col, title, rows in (
                 pd.DataFrame(
                     {
                         "Name": [r.label for r in rows],
-                        "Revenue": [money(r.revenue) for r in rows],
+                        "Revenue": [r.revenue for r in rows],
                     }
-                ),
+                ).style.format({"Revenue": cast(Callable[[object], str], money)}),
                 hide_index=True,
                 width="stretch",
             )

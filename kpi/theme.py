@@ -11,7 +11,8 @@ GREEN = "#22C55E"
 AMBER = "#F59E0B"
 RED = "#EF4444"
 FONT = '"Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif'
-SERIES = ["#3987e5", "#d95926"]
+NEW = "#d95926"
+SERIES = [BLUE, NEW]
 
 axis = {
     "gridcolor": BORDER,
