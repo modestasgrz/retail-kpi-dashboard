@@ -9,6 +9,7 @@ from loguru import logger
 URL = "https://archive.ics.uci.edu/static/public/502/online+retail+ii.zip"
 SHA256 = "572e36277c2390fbfde10664750731e0a86f55e33470d91919085f0408e67bfb"
 FILE_NAME = "online_retail_II.xlsx"
+# urllib is listed so tests can patch kpi.download.urllib.request.urlopen under mypy strict.
 __all__ = ["FILE_NAME", "SHA256", "URL", "ChecksumError", "download", "urllib"]
 
 

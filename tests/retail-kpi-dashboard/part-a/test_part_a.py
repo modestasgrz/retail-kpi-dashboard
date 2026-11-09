@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import zipfile
@@ -220,8 +221,6 @@ def test_download_writes_workbook_when_checksum_matches(
     with zipfile.ZipFile(buf, "w") as z:
         z.writestr(dl.FILE_NAME, b"xlsx bytes")
     payload = buf.getvalue()
-    import hashlib
-
     monkeypatch.setattr(dl, "SHA256", hashlib.sha256(payload).hexdigest())
     monkeypatch.setattr(
         dl.urllib.request, "urlopen", lambda url, timeout: io.BytesIO(payload)
@@ -244,3 +243,52 @@ def test_main_downloads_when_raw_missing(
     main(["--raw", str(target), "--out", str(tmp_path / "out")])
     assert calls == [tmp_path / "raw"]
     assert (tmp_path / "out" / "weekly.parquet").exists()
+
+
+def test_csv_rounds_half_up_like_the_cards(tmp_path: Path) -> None:
+    s = scenario(tmp_path, [line("1", 1, 374.325)])
+    assert f"{s.selected.aov:.2f}" == "374.32"
+    assert money2(s.selected.aov) == "£374.33"
+    assert weekly_csv(s).decode().splitlines()[1].split(",")[3] == "374.33"
+
+
+def test_cancelled_value_source_counts_only_product_code_cancellations(
+    tmp_path: Path,
+) -> None:
+    rows = [line("1", 4, 10.0), line("C2", -1, 10.0), line("C3", -1, 5.0, code="POST")]
+    assert (
+        "over 1 cancellation lines with a product code"
+        in scenario(tmp_path, rows).sources["cancelled_value"]
+    )
+
+
+def test_exact_quarter_with_float_noise_is_flagged(tmp_path: Path) -> None:
+    prices = [1.10, 1.10, 1.10, 1.10, 0.10, 0.30, 0.40]
+    rows = [line(str(i), 1, p) for i, p in enumerate(prices, 1)] + [
+        line("C9", -1, 1.30)
+    ]
+    reasons = {f.rule: f.reason for f in scenario(tmp_path, rows).selected.flags}
+    assert reasons["large_cancellations"] == "£1 cancelled against £5 revenue (25.0%)"
+
+
+def test_change_from_negative_base_is_none(tmp_path: Path) -> None:
+    rows = [
+        line("1", 1, 10.0, day=13),
+        line("C2", -5, 10.0, day=13),
+        line("3", 1, 10.0),
+    ]
+    assert scenario(tmp_path, rows).selected.net_revenue_wow is None
+
+
+def test_countries_sort_ignores_case(tmp_path: Path) -> None:
+    out = tmp_path / "d"
+    build(
+        raw(
+            [
+                line("1", 1, 1.0, country=c)
+                for c in ["USA", "United Arab Emirates", "Unspecified"]
+            ]
+        ),
+        out,
+    )
+    assert core.countries(out)[3:] == ["United Arab Emirates", "Unspecified", "USA"]

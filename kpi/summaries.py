@@ -18,11 +18,12 @@ def extract(report_md: str) -> Summary | None:
     starts = [i for i, line in enumerate(lines) if line.startswith("## ")]
     if not starts:
         return None
-    end = next((i for i in starts[1:]), len(lines))
+    end = starts[1] if len(starts) > 1 else len(lines)
+    blocks = "\n".join(lines[starts[0] + 1 : end]).split("\n\n")
     body = [
-        line
-        for line in lines[starts[0] + 1 : end]
-        if line.strip() and not line.startswith(("-", ">", "#"))
+        " ".join(line.strip() for line in block.strip().splitlines())
+        for block in blocks
+        if block.strip() and not block.strip().startswith(("- ", ">", "#"))
     ]
     tidy = [
         COMMA.sub(SEP, MARKER.sub("", text)).strip()

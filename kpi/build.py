@@ -43,6 +43,7 @@ def weekly(lines: pd.DataFrame) -> pd.DataFrame:
             .sum(),
             "cancellation_invoices": cancels.groupby("week")["Invoice"].nunique(),
             "cancelled_value": -product_cancels.groupby("week")["revenue"].sum(),
+            "product_cancellation_lines": product_cancels.groupby("week").size(),
             **{
                 f"{b}_lines": lines[lines["bucket"] == b].groupby("week").size()
                 for b in BUCKETS
@@ -93,9 +94,11 @@ def build(raw: pd.DataFrame, out_dir: Path) -> None:
         .groupby("Customer ID")["week"]
         .min()
     )
-    df["first_week"] = df["Customer ID"].map(first_seen)
+    df["first_week"] = pd.to_datetime(df["Customer ID"].map(first_seen.to_dict()))
     df = df[df["week"].isin(WEEKS)]
-    countries = sorted(set(df.loc[df["bucket"] == "product", "Country"]) - {UK, ""})
+    countries = sorted(
+        set(df.loc[df["bucket"] == "product", "Country"]) - {UK, ""}, key=str.casefold
+    )
     masks = {
         ALL: pd.Series(True, index=df.index),
         UK: df["Country"] == UK,

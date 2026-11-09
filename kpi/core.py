@@ -2,11 +2,13 @@ import csv
 import io
 import json
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from pydantic import BaseModel, ConfigDict
 
 from kpi.fmt import change, count, money, money2, pct, rounded
 from kpi.models import (
@@ -58,39 +60,52 @@ WOW = [
 ]
 
 
-class Data:
-    def __init__(self, data_dir: Path) -> None:
-        self.weekly = pd.read_parquet(data_dir / "weekly.parquet")
-        self.weekly["week_start"] = pd.to_datetime(self.weekly["week_start"]).dt.date
-        self.products = pd.read_parquet(data_dir / "products.parquet")
-        self.products["week_start"] = pd.to_datetime(
-            self.products["week_start"]
-        ).dt.date
-        meta = json.loads((data_dir / "meta.json").read_text())
-        self.data_end = datetime.fromisoformat(meta["data_end"])
-        self.countries: list[str] = meta["countries"]
-        summaries = data_dir / "summaries.json"
-        self.summaries: dict[str, dict[str, str]] = (
-            json.loads(summaries.read_text()) if summaries.exists() else {}
-        )
+class Data(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    weekly: pd.DataFrame
+    products: pd.DataFrame
+    data_end: datetime
+    countries: list[str]
+    summaries: dict[str, Summary]
 
 
 @lru_cache(maxsize=8)
-def load(data_dir: Path) -> Data:
-    return Data(data_dir)
+def load(data_dir: Path, version: int) -> Data:
+    """The derived tables of data_dir, read once per version (mtime of weekly.parquet, so a rebuild is seen)."""
+    weekly = pd.read_parquet(data_dir / "weekly.parquet")
+    weekly["week_start"] = pd.to_datetime(weekly["week_start"]).dt.date
+    products = pd.read_parquet(data_dir / "products.parquet")
+    products["week_start"] = pd.to_datetime(products["week_start"]).dt.date
+    meta = json.loads((data_dir / "meta.json").read_text())
+    summaries = data_dir / "summaries.json"
+    return Data(
+        weekly=weekly,
+        products=products,
+        data_end=datetime.fromisoformat(meta["data_end"]),
+        countries=meta["countries"],
+        summaries=json.loads(summaries.read_text()) if summaries.exists() else {},
+    )
 
 
 def countries(data_dir: Path = DATA_DIR) -> list[str]:
-    return list(load(data_dir).countries)
+    return list(
+        load(data_dir, (data_dir / "weekly.parquet").stat().st_mtime_ns).countries
+    )
 
 
-def swing(value: float | None) -> bool:
+def swing(change: float | None) -> bool:
     """|change rounded half-up to 0.1| ≥ 25.0 (DEC-08)."""
-    return value is not None and abs(rounded(value, "0.1")) >= SWING_PCT
+    return change is not None and abs(rounded(change, "0.1")) >= SWING_PCT
+
+
+def share(part: float, whole: float) -> Decimal:
+    """part / whole × 100, snapped to 9 decimals so float noise can't move a threshold."""
+    return rounded(100 * part / whole, "1e-9")
 
 
 def wow(now: float | None, base: float | None) -> float | None:
-    if now is None or not base:
+    if now is None or base is None or base <= 0:
         return None
     return (now - base) / base * 100
 
@@ -144,20 +159,24 @@ def week_flags(
                 f"Orders {change(row['orders_wow'])} vs previous week ({count(kpis['orders'])} vs {count(prev['orders'])})",
             )
         )
-    if revenue > 0 and kpis["cancelled_value"] >= CANCEL_SHARE / 100 * revenue:
-        share = 100 * kpis["cancelled_value"] / revenue
+    if (
+        revenue > 0
+        and (cancelled := share(kpis["cancelled_value"], revenue)) >= CANCEL_SHARE
+    ):
         flags.append(
             (
                 "large_cancellations",
-                f"{money(kpis['cancelled_value'])} cancelled against {money(revenue)} revenue ({pct(share)})",
+                f"{money(kpis['cancelled_value'])} cancelled against {money(revenue)} revenue ({pct(float(cancelled))})",
             )
         )
-    if revenue > 0 and 100 * float(r["top_line_revenue"]) / revenue > TOP_LINE_SHARE:
-        share = 100 * float(r["top_line_revenue"]) / revenue
+    if (
+        revenue > 0
+        and (top := share(float(r["top_line_revenue"]), revenue)) > TOP_LINE_SHARE
+    ):
         flags.append(
             (
                 "top_line",
-                f"One line is {pct(share)} of revenue: {r['top_line_description']}, {money(float(r['top_line_revenue']))} (invoice {r['top_line_invoice']})",
+                f"One line is {pct(float(top))} of revenue: {r['top_line_description']}, {money(float(r['top_line_revenue']))} (invoice {r['top_line_invoice']})",
             )
         )
     return [Flag(week_start=week, rule=rule, reason=reason) for rule, reason in flags]
@@ -174,10 +193,10 @@ def sources(row: WeekRow, r: dict[str, Any]) -> dict[str, str]:
         "aov": f"revenue {money2(row.revenue)} / orders {count(row.orders)}, {rng}",
         "units": f"sum(Quantity) over {lines}",
         "customers": f"count of distinct customer ids over the {count(with_id)} product lines that have one ({count(row.lines_without_customer_id)} have none), {rng}",
-        "new_customers": f"customers whose first product line in the whole dataset falls in {rng}",
+        "new_customers": f"{count(row.new_customers)} of {count(row.customers)} customers had their first product line in the whole dataset in {rng}",
         "returning_customers": f"customers {count(row.customers)} − new customers {count(row.new_customers)}, {rng}",
         "cancellation_rate": f"cancellation invoices {count(row.cancellation_invoices)} / (orders {count(row.orders)} + cancellation invoices {count(row.cancellation_invoices)}) × 100, {rng}",
-        "cancelled_value": f"−sum(Quantity × Price) over {count(int(r['cancellation_lines']))} cancellation lines with a product code, {rng}",
+        "cancelled_value": f"−sum(Quantity × Price) over {count(int(r['product_cancellation_lines']))} cancellation lines with a product code, {rng}",
         "net_revenue": f"revenue {money(row.revenue)} − cancelled value {money(row.cancelled_value)}, {rng}",
     }
 
@@ -194,13 +213,12 @@ def ranked(rows: pd.DataFrame, label: str) -> list[Ranked]:
 
 def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
     """Every number the dashboard shows for these filters, computed once."""
-    data = load(data_dir)
+    data = load(data_dir, (data_dir / "weekly.parquet").stat().st_mtime_ns)
     if filters.country not in data.countries:
         raise ValueError(f"Unknown country: {filters.country}.")
     records = data.weekly[data.weekly["filter"] == filters.country].to_dict("records")
     table = {rec["week_start"]: {str(k): v for k, v in rec.items()} for rec in records}
     weeks: list[WeekRow] = []
-    raw: dict[date, dict[str, Any]] = {}
     week = filters.start
     while week <= filters.end:
         r = table[week]
@@ -224,7 +242,6 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
         )
         row["flags"] = week_flags(week, r, kpis, prev, row, data.data_end)
         weeks.append(WeekRow(**row))
-        raw[week] = r
         week += timedelta(days=7)
     selected = next(w for w in weeks if w.week_start == filters.week)
     flags = [f for w in weeks for f in w.flags]
@@ -257,8 +274,8 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
         top_products=ranked(products, "description"),
         top_countries=ranked(by_country, "filter"),
         flags=flags,
-        sources=sources(selected, raw[filters.week]),
-        summary=Summary(**saved) if saved else None,
+        sources=sources(selected, table[filters.week]),
+        summary=saved,
     )
 
 
@@ -266,7 +283,7 @@ def weekly_csv(scenario: Scenario) -> bytes:
     """The weekly KPI table of the range as UTF-8 CSV (DEC-12): raw numbers, 2 decimals, empty cell for n/a."""
 
     def num(value: float | None) -> str:
-        return "" if value is None else f"{value:.2f}"
+        return "" if value is None else str(rounded(value, "0.01") + 0)
 
     out = io.StringIO()
     writer = csv.writer(out, lineterminator="\n")

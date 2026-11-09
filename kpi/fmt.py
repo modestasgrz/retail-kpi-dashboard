@@ -33,7 +33,7 @@ def count(value: int) -> str:
 
 
 def pct(value: float | None) -> str:
-    return "n/a" if value is None else f"{rounded(value, '0.1')}%"
+    return "n/a" if value is None else f"{grouped(rounded(value, '0.1') + 0)}%"
 
 
 def signed(value: float | None, unit: str) -> str:
