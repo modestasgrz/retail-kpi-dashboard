@@ -82,7 +82,7 @@ def scenario(
 
 
 def week_row(data_dir: Path, week: date, country: str = "All countries") -> Any:
-    s = scenario(data_dir, week=week, country=country)
+    s = scenario(data_dir, week=week, country=country, start=week, end=week)
     return s.selected
 
 
