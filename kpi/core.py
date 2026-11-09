@@ -72,7 +72,7 @@ class Data(BaseModel):
 
 @lru_cache(maxsize=8)
 def load(data_dir: Path, version: int) -> Data:
-    """The derived tables of data_dir, read once per version (mtime of weekly.parquet, so a rebuild is seen)."""
+    """The derived tables of data_dir, read once per version (newest file mtime, so a rebuild or new summaries are seen)."""
     weekly = pd.read_parquet(data_dir / "weekly.parquet")
     weekly["week_start"] = pd.to_datetime(weekly["week_start"]).dt.date
     products = pd.read_parquet(data_dir / "products.parquet")
@@ -90,7 +90,7 @@ def load(data_dir: Path, version: int) -> Data:
 
 def countries(data_dir: Path = DATA_DIR) -> list[str]:
     return list(
-        load(data_dir, (data_dir / "weekly.parquet").stat().st_mtime_ns).countries
+        load(data_dir, max(f.stat().st_mtime_ns for f in data_dir.iterdir())).countries
     )
 
 
@@ -213,7 +213,7 @@ def ranked(rows: pd.DataFrame, label: str) -> list[Ranked]:
 
 def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
     """Every number the dashboard shows for these filters, computed once."""
-    data = load(data_dir, (data_dir / "weekly.parquet").stat().st_mtime_ns)
+    data = load(data_dir, max(f.stat().st_mtime_ns for f in data_dir.iterdir()))
     if filters.country not in data.countries:
         raise ValueError(f"Unknown country: {filters.country}.")
     records = data.weekly[data.weekly["filter"] == filters.country].to_dict("records")

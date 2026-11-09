@@ -9,6 +9,7 @@ from kpi.fmt import SEP
 from kpi.models import Summary
 
 MARKER = re.compile(r" ?\[F\d+\]")
+NOT_TEXT = re.compile(r"\s*([-*]\s|[-*_]{3,}\s*$|[>#|]|\d+\.\s)")
 COMMA = re.compile(r"(?<=\d),(?=\d{3}(?!\d))")
 
 
@@ -19,11 +20,17 @@ def extract(report_md: str) -> Summary | None:
     if not starts:
         return None
     end = starts[1] if len(starts) > 1 else len(lines)
-    blocks = "\n".join(lines[starts[0] + 1 : end]).split("\n\n")
+    blocks = re.split(r"\n\s*\n", "\n".join(lines[starts[0] + 1 : end]))
     body = [
-        " ".join(line.strip() for line in block.strip().splitlines())
+        " ".join(kept)
         for block in blocks
-        if block.strip() and not block.strip().startswith(("- ", ">", "#"))
+        if (
+            kept := [
+                line.strip()
+                for line in block.splitlines()
+                if line.strip() and not NOT_TEXT.match(line)
+            ]
+        )
     ]
     tidy = [
         COMMA.sub(SEP, MARKER.sub("", text)).strip()

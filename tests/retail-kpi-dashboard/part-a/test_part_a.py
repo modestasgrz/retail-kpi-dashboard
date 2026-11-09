@@ -292,3 +292,9 @@ def test_countries_sort_ignores_case(tmp_path: Path) -> None:
         out,
     )
     assert core.countries(out)[3:] == ["United Arab Emirates", "Unspecified", "USA"]
+
+
+def test_extract_drops_rules_lists_and_splits_on_space_only_lines() -> None:
+    s = extract("## H\nPara one.\n- item a\n1. item b\n\n---\n  \nPara two.\n")
+    assert s is not None
+    assert s.text == "Para one.\n\nPara two."
