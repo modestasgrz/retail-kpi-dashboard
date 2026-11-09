@@ -1,0 +1,18 @@
+html, body, p, li, label, input, button, h1, h2, h3, h4, td, th, [data-testid="stMarkdownContainer"] {
+  font-family: "Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+}
+.block-container { padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1360px; }
+h1 { font-weight: 650; letter-spacing: -0.01em; }
+[data-testid="stMetric"] {
+  background: #13203A;
+  border: 1px solid #22324F;
+  border-radius: 10px;
+  padding: 14px 16px;
+  min-height: 136px;
+}
+[data-testid="stMetricLabel"] p,
+[data-testid="stMetricLabel"] div { color: #8B9AB4; font-size: 0.85rem; white-space: normal; overflow: visible; text-overflow: clip; }
+[data-testid="stMetricValue"] { font-variant-numeric: tabular-nums; font-size: 1.6rem; }
+[data-testid="stSidebar"] { border-right: 1px solid #22324F; }
+[data-testid="stCaptionContainer"] { color: #8B9AB4; }
+.st-key-strip [data-testid="stMetric"] { background: #0F1A30; }
