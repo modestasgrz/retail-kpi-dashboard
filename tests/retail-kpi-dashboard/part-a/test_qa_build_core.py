@@ -228,7 +228,7 @@ def test_lines_only_in_one_week_leave_other_weeks_empty(tmp_path: Path) -> None:
     assert [f.rule for f in empty.flags] == ["no_data"]
     nxt = next(w for w in s.weeks if w.week_start == date(2011, 9, 26))
     assert nxt.revenue_wow == pytest.approx(-100.0)
-    assert [f.rule for f in nxt.flags] == ["no_data", "revenue_swing", "orders_swing"]
+    assert [f.rule for f in nxt.flags] == ["no_data"]
     assert s.totals.weeks == 53
     assert s.totals.flagged_weeks == 53
     assert s.totals.revenue == pytest.approx(10.0)
@@ -622,7 +622,7 @@ def test_large_cancellations_reason_groups_thousands(tmp_path: Path) -> None:
 def test_no_large_cancellations_flag_when_revenue_is_zero(tmp_path: Path) -> None:
     rows = [row("1", at(13)), row("C1", at(21), qty=-1, price=50.0)]
     s = scen(built(tmp_path, rows))
-    assert rules(s) == ["no_data", "partial_week", "revenue_swing", "orders_swing"]
+    assert rules(s) == ["no_data", "partial_week"]
     assert s.selected.net_revenue == -50.0
     assert s.selected.cancellation_rate == 100.0
 
@@ -720,8 +720,6 @@ def test_partial_week_applies_to_empty_week_and_every_filter(tmp_path: Path) -> 
     assert rules(scen(out, country=UK)) == [
         "no_data",
         "partial_week",
-        "revenue_swing",
-        "orders_swing",
     ]
 
 
@@ -769,7 +767,7 @@ def test_csv_shape_for_range_with_empty_and_zero_base_weeks(tmp_path: Path) -> N
     assert empty["orders"] == "0" and empty["revenue_gbp"] == "0.00"
     last = dict(zip(table[0], table[3], strict=True))
     assert last["revenue_wow_pct"] == "-100.00"
-    assert last["flags"] == "no_data; revenue_swing; orders_swing"
+    assert last["flags"] == "no_data"
 
 
 def test_csv_single_week_range(tmp_path: Path) -> None:

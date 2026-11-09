@@ -267,8 +267,12 @@ def test_flags_follow_rule_order_and_their_definitions(
             assert got == sorted(got, key=RULE_ORDER.index), (c, w.week_start)
             assert len(got) == len(set(got))
             assert all(f.week_start == w.week_start for f in w.flags)
-            assert ("revenue_swing" in got) is swing(w.revenue_wow), (c, w.week_start)
-            assert ("orders_swing" in got) is swing(w.orders_wow), (c, w.week_start)
+            assert ("revenue_swing" in got) is (
+                w.product_lines > 0 and swing(w.revenue_wow)
+            ), (c, w.week_start)
+            assert ("orders_swing" in got) is (
+                w.product_lines > 0 and swing(w.orders_wow)
+            ), (c, w.week_start)
             big = w.revenue > 0 and w.cancelled_value >= 0.25 * w.revenue - 1e-9
             if "large_cancellations" in got:
                 assert big, (c, w.week_start)

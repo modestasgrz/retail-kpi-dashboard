@@ -145,14 +145,15 @@ def week_flags(
         flags.append(
             ("partial_week", f"Data ends {data_end.date()}; the week is missing days")
         )
-    if swing(row["revenue_wow"]):
+    comparable = int(r["product_lines"]) > 0 and prev["orders"] > 0
+    if comparable and swing(row["revenue_wow"]):
         flags.append(
             (
                 "revenue_swing",
                 f"Revenue {change(row['revenue_wow'])} vs previous week ({money(revenue)} vs {money(prev['revenue'])})",
             )
         )
-    if swing(row["orders_wow"]):
+    if comparable and swing(row["orders_wow"]):
         flags.append(
             (
                 "orders_swing",

@@ -94,12 +94,7 @@ def test_cancellation_only_week_has_no_orders_and_rate_100(tmp_path: Path) -> No
     s = scenario(tmp_path, [line("1", 1, 10.0, day=13), line("C2", -1, 10.0, day=20)])
     w = s.selected
     assert (w.orders, w.aov, w.cancellation_rate) == (0, None, 100.0)
-    assert [f.rule for f in w.flags] == [
-        "no_data",
-        "partial_week",
-        "revenue_swing",
-        "orders_swing",
-    ]
+    assert [f.rule for f in w.flags] == ["no_data", "partial_week"]
 
 
 def test_top_countries_follow_the_filter(tmp_path: Path) -> None:
