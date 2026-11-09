@@ -1,13 +1,13 @@
-"""AC-31 — config.toml has base = "dark" and backgroundColor, secondaryBackgroundColor, primaryColor, textColor equal kpi.theme BG, SURFACE, BLUE, TEXT; kpi.kpi.theme.TEMPLATE is a Plotly template registered as "navy"."""
+"""AC-31 — config.toml has base = "dark" and backgroundColor, secondaryBackgroundColor, primaryColor, textColor equal kpi.theme BG, SURFACE, BLUE, TEXT; kpi.theme.TEMPLATE is a Plotly template registered as "navy"."""
 
 import tomllib
 
+import plotly.io as pio
 from fixture import REPO
 
 
 def test_ac_31_theme_tokens() -> None:
     import kpi.theme
-    import plotly.io as pio
 
     cfg = tomllib.loads((REPO / ".streamlit" / "config.toml").read_text())["theme"]
     assert cfg["base"] == "dark"

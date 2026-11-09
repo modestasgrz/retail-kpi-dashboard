@@ -1,9 +1,21 @@
 """AC-27 — Given the app on defaults, Weekly table shows a dataframe with 53 rows and a download button with file name "weekly-kpis_2010-12-06_2011-12-05_all-countries.csv"."""
 
+import gc
+from collections.abc import Iterator
+
+import pytest
 from fixture import app, download_file
 
 
-def test_ac_27_table_and_download() -> None:
+@pytest.fixture
+def no_gc() -> Iterator[None]:
+    """The download is read from Streamlit's in-memory media storage, reachable only until a gc pass."""
+    gc.disable()
+    yield
+    gc.enable()
+
+
+def test_ac_27_table_and_download(no_gc: None) -> None:
     at = app()
     at.switch_page("views/table.py").run()
     assert not at.exception
