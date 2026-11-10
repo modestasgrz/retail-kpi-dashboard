@@ -1,6 +1,6 @@
 # Deploy to Streamlit Community Cloud (owner step, not done yet)
 
-Status: prepared, not deployed. The repo stays private until the owner decides otherwise.
+Status: prepared, not deployed. The repo is public.
 
 ## What's already in place
 
@@ -16,7 +16,7 @@ Status: prepared, not deployed. The repo stays private until the owner decides o
 ## Steps (about 5 minutes, needs the owner's GitHub login)
 
 1. Refresh the dependency export on main if `uv.lock` changed: `make requirements`, commit through a PR.
-2. Go to https://share.streamlit.io and sign in with GitHub as `modestasgrz`. Grant Streamlit access to the private repo `modestasgrz/retail-kpi-dashboard` when asked.
+2. Go to https://share.streamlit.io and sign in with GitHub as `modestasgrz`. Grant Streamlit access to `modestasgrz/retail-kpi-dashboard` when asked.
 3. **Create app** → **Deploy a public app from GitHub**: repository `modestasgrz/retail-kpi-dashboard`, branch `main`, main file path `app.py`.
 4. **App URL**: pick a readable subdomain, e.g. `retail-kpi-dashboard`.
 5. **Advanced settings**: Python **3.12**. No secrets.
@@ -25,9 +25,8 @@ Status: prepared, not deployed. The repo stays private until the owner decides o
 
 ## Decisions for the owner before deploying
 
-- **Who can open it.** Apps deployed from a private repo start as private (only invited viewers). A portfolio link needs anyone with the link to open it. Check in **Settings → Sharing** whether this app can be made public while the repo stays private. If it can't, either make the repo public or keep the app invite-only.
+- **Who can open it.** Apps from a public repo can be opened by anyone with the link; check **Settings → Sharing** after deploying.
 - **Which dependency file Cloud reads.** The repo has both `uv.lock` and `requirements.txt`. Check the build log to see which one Cloud picked; both pin the same runtime versions.
-- **Repo visibility.** Making the repo public is a separate step (`gh repo edit --visibility public`). Before that, re-check the git history for anything that shouldn't be public. The history holds only public-data derived tables, code and docs.
 
 ## After deploying
 
