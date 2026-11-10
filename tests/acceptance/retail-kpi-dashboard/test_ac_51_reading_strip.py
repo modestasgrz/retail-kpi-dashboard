@@ -1,4 +1,4 @@
-"""AC-51 — Given the app on defaults, then each of Overview, Trends, Flagged weeks and Weekly table shows one reading strip (DEC-30): a markdown containing "THE QUESTION", "RIGHT NOW" and "DO THIS" with that page's texts: Overview "How did the selected week go, and does anything need a look?", "Biggest move vs last week: Cancelled -54.4%; the other cards moved within ±16.2%." and "Nothing flagged. Scan the top products and countries, then switch weeks in the sidebar."; Trends "Is the selected week part of a trend or a one-off?" and "Week 2011-11-28: net revenue £306 112, the 4th highest of 51 full weeks in range."; Flagged weeks "Which weeks need a look, and why?", "9 of 53 weeks flagged: Revenue swing 6 · Orders swing 3 · No sales 1 · Placed and cancelled 2 · Partial week 1." and "Read each reason; for swings, the drivers show which products and countries moved."; Weekly table "What are the exact weekly numbers?" and "Showing the last 8 of 53 weeks, 2011-10-17 – 2011-12-11."; when week 2011-12-05 is picked, the Overview DO THIS line is "Read the flag details below: Partial week, Placed and cancelled." and the Trends RIGHT NOW line is "Week 2011-12-05 is partial, so it isn't ranked; highest full week 2011-11-14 (£369 126)."; Methodology & data has no strip."""
+"""AC-51 — Given the app on defaults, then each of Overview, Trends, Flagged weeks and Weekly table shows one reading strip (DEC-30): a markdown containing "THE QUESTION", "RIGHT NOW" and "DO THIS" with that page's texts: Overview "How did the selected week go, and does anything need a look?", "Biggest move vs last week: New customers -16.2%; the other cards moved within ±7.6%." and "Nothing flagged. Scan the top products and countries, then switch weeks in the sidebar."; Trends "Is the selected week part of a trend or a one-off?" and "Week 2011-11-28: net revenue £306 112, the 4th highest of 51 full weeks in range."; Flagged weeks "Which weeks need a look, and why?", "9 of 53 weeks flagged: Revenue swing 6 · Orders swing 3 · No sales 1 · Placed and cancelled 2 · Partial week 1." and "Read each reason; for swings, the drivers show which products and countries moved."; Weekly table "What are the exact weekly numbers?" and "Showing the last 8 of 53 weeks, 2011-10-17 – 2011-12-11."; when week 2011-12-05 is picked, the Overview DO THIS line is "Read the flag details below: Partial week, Placed and cancelled." and the Trends RIGHT NOW line is "Week 2011-12-05 is partial, so it isn't ranked; highest full week 2011-11-14 (£369 126)."; with range 2011-11-28 .. 2011-11-28 the Trends RIGHT NOW line is "Week 2011-11-28: net revenue £306 112, the 1st highest of 1 full week in range." and the Weekly table's is "Showing all of 1 week, 2011-11-28 – 2011-12-04."; Methodology & data has no strip."""
 
 from datetime import date
 from typing import Any
@@ -9,7 +9,7 @@ S = "\u202f"
 PAGES = {
     "views/overview.py": [
         "How did the selected week go, and does anything need a look?",
-        "Biggest move vs last week: Cancelled -54.4%; the other cards moved within ±16.2%.",
+        "Biggest move vs last week: New customers -16.2%; the other cards moved within ±7.6%.",
         "Nothing flagged. Scan the top products and countries, then switch weeks in the sidebar.",
     ],
     "views/trends.py": [
@@ -56,5 +56,14 @@ def test_ac_51_reading_strip() -> None:
         f"Week 2011-12-05 is partial, so it isn't ranked; highest full week 2011-11-14 (£369{S}126)."
         in strips(at)[0]
     )
+    at.selectbox(key="preset").select("Custom").run()
+    at.date_input(key="dates").set_value((date(2011, 11, 28), date(2011, 12, 4))).run()
+    at.switch_page("views/trends.py").run()
+    assert (
+        f"Week 2011-11-28: net revenue £306{S}112, the 1st highest of 1 full week in range."
+        in strips(at)[0]
+    )
+    at.switch_page("views/table.py").run()
+    assert "Showing all of 1 week, 2011-11-28 – 2011-12-04." in strips(at)[0]
     at.switch_page("views/methodology.py").run()
     assert strips(at) == []
