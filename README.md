@@ -42,7 +42,7 @@ Full year, all countries: revenue £10 066 085 over 19 349 orders, £472 377 can
 | --- | --- | --- |
 | 2011-11-28 (default, last full week) | £309 378 (+2.3%) | 663 orders, AOV £466.63, 514 customers (31 new), no flags |
 | 2011-09-19 | £328 713 (+46.8%) | revenue swing: +83.0% vs its 4-week average (£179 625); top product Set Of Tea Coffee Sugar Tins Pantry |
-| 2011-12-05 | £483 725 (+56.4%) | 4 flags: partial week (data ends 2011-12-09); revenue swing (+44.1% vs its 4-week average); £172 782 cancelled (35.7% of revenue); one line is 34.8% of revenue (PAPER CRAFT , LITTLE BIRDIE, £168 470). Revenue after cancellations £310 943 |
+| 2011-12-05 | £483 725 (+56.4%) | 4 flags: partial week (data ends 2011-12-09); revenue swing (+44.1% vs its 4-week average); £172 782 cancelled (35.7% of revenue); one line is 34.8% of revenue (Paper Craft , Little Birdie, £168 470). Revenue after cancellations £310 943 |
 
 These weekly figures match an earlier, independently written implementation of the same rules on both check weeks (acceptance test AC-14).
 
