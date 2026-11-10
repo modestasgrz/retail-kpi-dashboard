@@ -14,7 +14,7 @@ from streamlit.testing.v1 import AppTest
 
 from kpi import theme
 from kpi.core import countries, run_scenario, weekly_csv
-from kpi.fmt import change, count, money, money2, pct, points
+from kpi.fmt import change, count, money, money2
 from kpi.models import (
     ALL,
     FIRST_WEEK,
@@ -55,7 +55,7 @@ def scen(
 
 def range_line(s: Any) -> str:
     f, t = s.filters, s.totals
-    return f"Range {f.start} – {f.end + timedelta(days=6)} · revenue {money(t.revenue)} · orders {count(t.orders)} · flagged weeks {count(t.flagged_weeks)}"
+    return f"Range {f.start} – {f.end + timedelta(days=6)} · net revenue {money(t.net_revenue)} · orders {count(t.orders)} · flagged weeks {count(t.flagged_weeks)}"
 
 
 def captions(at: AppTest) -> list[str]:
@@ -112,9 +112,10 @@ def pick(at: AppTest, preset: str) -> AppTest:
 def expected_cards(s: Any) -> dict[str, tuple[str, str, str]]:
     w = s.selected
     rows = {
-        "Revenue": (money(w.revenue), change(w.revenue_wow), "revenue"),
+        "Net revenue": (money(w.net_revenue), change(w.net_revenue_wow), "net_revenue"),
         "Orders": (count(w.orders), change(w.orders_wow), "orders"),
-        "Average order value": (money2(w.aov), change(w.aov_wow), "aov"),
+        "Avg order (net)": (money2(w.net_aov), change(w.net_aov_wow), "net_aov"),
+        "Gross revenue": (money(w.revenue), change(w.revenue_wow), "revenue"),
         "Units": (count(w.units), change(w.units_wow), "units"),
         "Customers": (count(w.customers), change(w.customers_wow), "customers"),
         "New customers": (
@@ -127,20 +128,10 @@ def expected_cards(s: Any) -> dict[str, tuple[str, str, str]]:
             change(w.returning_customers_wow),
             "returning_customers",
         ),
-        "Cancellation rate": (
-            pct(w.cancellation_rate),
-            points(w.cancellation_rate_change_pp),
-            "cancellation_rate",
-        ),
-        "Cancelled value": (
+        "Cancelled": (
             money(w.cancelled_value),
             change(w.cancelled_value_wow),
             "cancelled_value",
-        ),
-        "Revenue after cancellations": (
-            money(w.net_revenue),
-            change(w.net_revenue_wow),
-            "net_revenue",
         ),
     }
     return {k: (v, d, s.sources[key]) for k, (v, d, key) in rows.items()}
@@ -245,7 +236,7 @@ def test_reset_twice_is_idempotent() -> None:
     at.button(key="reset").click().run()
     assert not at.exception
     assert at.selectbox(key="week").value == DEFAULT_WEEK
-    assert metric(at, "Revenue").value == money(scen().selected.revenue)
+    assert metric(at, "Net revenue").value == money(scen().selected.net_revenue)
 
 
 # ---------- week fallback ----------
@@ -364,8 +355,8 @@ def test_sparse_country_empty_week_shows_na() -> None:
     assert not at.exception
     sw = scen("Bahrain", week)
     assert_cards(at, sw)
-    assert metric(at, "Average order value").value == "n/a"
-    assert metric(at, "Cancellation rate").value == "n/a"
+    assert metric(at, "Avg order (net)").value == "n/a"
+    assert metric(at, "Net revenue").value == money(0)
     assert ":orange-badge[▲ 1 flag]" in [m.value for m in at.markdown]
     details = next(e for e in at.expander if e.label == "Flag details")
     assert "**No sales** · No sales lines this week" in details.markdown[0].value
@@ -412,29 +403,26 @@ def test_first_week_cards_equal_core() -> None:
     assert_cards(at, scen(ALL, FIRST_WEEK))
 
 
-def test_cancellation_rate_delta_uses_pp() -> None:
+def test_every_card_delta_is_a_percent_never_pp() -> None:
     at = app()
     for week in (date(2011, 9, 19), DEFAULT_WEEK, date(2011, 1, 17)):
         at.selectbox(key="week").select(week).run()
-        d = metric(at, "Cancellation rate").delta
-        if d:
-            assert d.endswith(" pp") and "%" not in d
-        for label in ("Revenue", "Orders", "Cancelled value"):
-            d2 = metric(at, label).delta
-            assert not d2 or d2.endswith("%")
+        for m in at.metric:
+            assert not m.delta or m.delta == "n/a" or m.delta.endswith("%"), m.label
+            assert "pp" not in (m.delta or ""), m.label
 
 
 def test_na_delta_shown_as_neutral_na() -> None:
     s = scen("Bahrain")
     candidates = [
-        w.week_start for w in s.weeks if w.orders > 0 and w.revenue_wow is None
+        w.week_start for w in s.weeks if w.orders > 0 and w.net_revenue_wow is None
     ]
     at = app()
     at.selectbox(key="country").select("Bahrain").run()
     if not candidates:
         pytest.fail("Bahrain has no week with a None revenue change")
     at.selectbox(key="week").select(candidates[0]).run()
-    m = metric(at, "Revenue")
+    m = metric(at, "Net revenue")
     assert m.delta == "n/a"
     assert m.proto.color == GRAY
     assert m.proto.direction == NO_ARROW
@@ -444,7 +432,7 @@ def test_na_delta_shown_as_neutral_na() -> None:
 def test_delta_colors() -> None:
     red, green = 0, 1
     at = app()
-    inverse = {"Cancellation rate", "Cancelled value"}
+    inverse = {"Cancelled"}
     for week in (date(2011, 9, 19), DEFAULT_WEEK):
         at.selectbox(key="week").select(week).run()
         for label in expected_cards(scen()):
@@ -494,7 +482,7 @@ def test_csv_download_equals_core(country: str, start: date, end: date) -> None:
     assert content == weekly_csv(s)
     slug = country.lower().replace(" ", "-")
     assert name == f"weekly-kpis_{start}_{end}_{slug}.csv"
-    assert [len(df.value) for df in at.dataframe] == [s.totals.weeks]
+    assert [len(df.value) for df in at.dataframe] == [min(8, s.totals.weeks)]
 
 
 def test_csv_content_independent_of_selected_week() -> None:
@@ -528,10 +516,17 @@ def test_flag_rows_equal_scenario_flags(country: str, start: date, end: date) ->
     for heading, w in zip(headings, flagged, strict=True):
         assert heading.startswith(f"**{w.week_start} – ")
         listed = values[values.index(heading) + 1]
-        assert listed.count("\n") + 1 == len(w.flags)
+        top = [line for line in listed.split("\n") if not line.startswith(" ")]
+        assert len(top) == len(w.flags)
         for f in w.flags:
             assert f"-badge[{FLAG_LABELS[f.rule]}]" in heading
-            assert f"- **{FLAG_LABELS[f.rule]}:** {f.reason}" in listed
+            label = FLAG_LABELS[f.rule]
+            want = (
+                f"- {f.reason}"
+                if f.reason.startswith(f"{label}:")
+                else f"- **{label}:** {f.reason}"
+            )
+            assert want in top
     if not s.flags:
         assert any("No flagged weeks" in e.value for e in at.success)
 
@@ -652,8 +647,8 @@ def test_plotly_template_separators_and_colours() -> None:
     assert lay.yaxis.showgrid is True
     assert (lay.legend.orientation, lay.legend.x, lay.legend.xanchor) == (
         "h",
-        1,
-        "right",
+        0,
+        "left",
     )
     assert lay.font.color == theme.TEXT
     assert lay.xaxis.gridcolor == theme.BORDER
@@ -690,24 +685,27 @@ def test_reset_and_footer_render_with_invalid_dates() -> None:
     at.button(key="reset").click().run()
     assert not at.exception
     assert not at.error
-    assert metric(at, "Revenue").value == money(scen().selected.revenue)
+    assert metric(at, "Net revenue").value == money(scen().selected.net_revenue)
 
 
-def test_trends_caption_text() -> None:
+def test_trends_has_no_caption_paragraph() -> None:
     at = app()
     at.switch_page("views/trends.py").run()
-    s = scen()
-    expected = f"Range revenue {money(s.totals.revenue)}; cancellations in range {money(s.totals.cancelled_value)}."
-    assert any(c.value.startswith(expected) for c in at.caption)
+    caps = [str(c.value) for c in at.main.caption]
+    assert len(caps) == 2
+    assert caps[0] == range_line(scen())
+    assert "Data as of" in caps[1]
 
 
 def test_weekly_table_values_are_numeric_and_match_core() -> None:
     at = app()
     at.switch_page("views/table.py").run()
+    at.toggle(key="all_weeks").set_value(True).run()
     df = at.dataframe[0].value
     s = scen()
     assert list(df["Week"]) == [str(w.week_start) for w in s.weeks]
-    assert list(df["Revenue"]) == pytest.approx([w.revenue for w in s.weeks])
+    assert list(df["Net revenue"]) == pytest.approx([w.net_revenue for w in s.weeks])
+    assert list(df["Gross"]) == pytest.approx([w.revenue for w in s.weeks])
     assert list(df["Orders"]) == [w.orders for w in s.weeks]
-    assert df["Revenue"].dtype.kind == "f"
+    assert df["Net revenue"].dtype.kind == "f"
     assert df["Orders"].dtype.kind in "iu"

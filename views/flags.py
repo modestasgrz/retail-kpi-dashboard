@@ -4,16 +4,9 @@ from datetime import timedelta
 import streamlit as st
 
 from kpi.models import FLAG_LABELS
-from views.ui import header
+from views.ui import flag_line, header
 
-COLOUR = {
-    "no_data": "gray",
-    "partial_week": "gray",
-    "revenue_swing": "blue",
-    "orders_swing": "blue",
-    "large_cancellations": "orange",
-    "top_line": "orange",
-}
+GRAY = {"no_data", "partial_week"}
 
 s = header("Flagged weeks")
 if not s.flags:
@@ -22,20 +15,22 @@ if not s.flags:
     )
 else:
     counts = Counter(f.rule for f in s.flags)
-    st.caption(" · ".join(f"{FLAG_LABELS[rule]}: {n}" for rule, n in counts.items()))
-    for w in s.weeks:
-        if not w.flags:
-            continue
-        with st.container(border=True):
-            st.markdown(
-                f"**{w.week_start} – {w.week_start + timedelta(days=6)}** "
-                + " ".join(
-                    f":{COLOUR[f.rule]}-badge[{FLAG_LABELS[f.rule]}]" for f in w.flags
+    st.caption(
+        " · ".join(f"{FLAG_LABELS[rule]}: {n}" for rule, n in counts.items()),
+        help="Rules and thresholds: see Methodology & data. A flag asks for a look; it is not an error in the data.",
+    )
+    with st.container(key="flags"):
+        for w in s.weeks:
+            if not w.flags:
+                continue
+            with st.container(border=True):
+                st.markdown(
+                    f"**{w.week_start} – {w.week_start + timedelta(days=6)}** "
+                    + " ".join(
+                        f":{'gray' if f.rule in GRAY else 'orange'}-badge[{FLAG_LABELS[f.rule]}]"
+                        for f in w.flags
+                    )
                 )
-            )
-            st.markdown(
-                "\n".join(f"- **{FLAG_LABELS[f.rule]}:** {f.reason}" for f in w.flags)
-            )
-st.caption(
-    "Rules: see Methodology & data. A flag asks for a look; it is not an error in the data."
-)
+                st.markdown(
+                    "\n".join(flag_line(f, "- **{label}:** {reason}") for f in w.flags)
+                )
