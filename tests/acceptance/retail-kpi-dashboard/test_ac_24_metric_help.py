@@ -1,4 +1,4 @@
-"""AC-24 — Given the app on defaults, then the "Net revenue" metric's help text equals the core's `sources["net_revenue"]` for 2011-11-28, All countries."""
+"""AC-24 — Given the app on defaults, then the "Net revenue" metric's help text starts with the DEC-31 plain sentence "What the week's sales brought in after cancellations." and ends with the core's `sources["net_revenue"]` for 2011-11-28, All countries."""
 
 from datetime import date
 
@@ -14,4 +14,6 @@ def test_ac_24_metric_help() -> None:
         REPO / "data" / "derived",
     )
     at = app()
-    assert metric(at, "Net revenue").proto.help == s.sources["net_revenue"]
+    help_text = metric(at, "Net revenue").proto.help
+    assert help_text.startswith("What the week's sales brought in after cancellations.")
+    assert help_text.endswith(s.sources["net_revenue"])

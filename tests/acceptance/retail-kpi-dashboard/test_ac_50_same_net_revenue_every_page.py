@@ -1,4 +1,4 @@
-"""AC-50 — Given the app on defaults (week 2011-11-28, All countries), then the net revenue of the selected week is the same on every page: `money()` of the core value is the "Net revenue" metric value and is in the computed headline on Overview; the Trends revenue chart's first trace at 2011-11-28 equals the core float; and the Weekly table's "Net revenue" cell for 2011-11-28 equals the core float."""
+"""AC-50 — Given the app on defaults (week 2011-11-28, All countries), then the net revenue of the selected week is the same on every page: `money()` of the core value is the "Net revenue" metric value and is in the computed headline on Overview (a markdown containing "Net revenue {money}, "); the Trends revenue chart's first trace at 2011-11-28 equals the core float; and the Weekly table's "Net revenue" cell for 2011-11-28 equals the core float."""
 
 import json
 from datetime import date
@@ -19,9 +19,7 @@ def test_ac_50_same_net_revenue_every_page() -> None:
     net = s.selected.net_revenue
     at = app()
     assert metric(at, "Net revenue").value == money(net)
-    assert any(
-        str(m.value).startswith(f"Net revenue {money(net)},") for m in at.markdown
-    )
+    assert any(f"Net revenue {money(net)}, " in str(m.value) for m in at.markdown)
     at.switch_page("views/trends.py").run()
     chart = json.loads(at.get("plotly_chart")[0].proto.spec)
     main = chart["data"][0]
