@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
+from string import capwords
 from typing import Any
 
 import pandas as pd
@@ -178,7 +179,7 @@ def week_flags(
         flags.append(
             (
                 "top_line",
-                f"One line is {pct(float(top))} of revenue: {r['top_line_description']}, {money(float(r['top_line_revenue']))} (invoice {r['top_line_invoice']})",
+                f"One line is {pct(float(top))} of revenue: {capwords(r['top_line_description'])}, {money(float(r['top_line_revenue']))} (invoice {r['top_line_invoice']})",
             )
         )
     return [Flag(week_start=week, rule=rule, reason=reason) for rule, reason in flags]
