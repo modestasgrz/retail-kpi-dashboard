@@ -42,6 +42,7 @@ st.set_page_config(
 st.html(
     f"<style>{(Path(__file__).parent / 'assets' / 'style.css').read_text()}</style>"
 )
+st.logo(str(Path(__file__).parent / "assets" / "logo.svg"), size="large")
 if "preset" not in st.session_state:
     reset()
 
@@ -81,7 +82,6 @@ pages = st.navigation(
 )
 
 with st.sidebar:
-    st.markdown("### Retail KPI dashboard")
     st.caption("Weekly review of a UK online giftware retailer, Dec 2010 – Dec 2011.")
     st.selectbox("Preset", [*PRESETS, CUSTOM], key="preset", on_change=apply_preset)
     st.date_input(

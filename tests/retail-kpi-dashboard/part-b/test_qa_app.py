@@ -5,6 +5,7 @@ import tomllib
 from collections.abc import Iterator
 from datetime import date, timedelta
 from pathlib import Path
+from string import capwords
 from typing import Any
 
 import plotly.io as pio
@@ -14,7 +15,15 @@ from streamlit.testing.v1 import AppTest
 from kpi import theme
 from kpi.core import countries, run_scenario, weekly_csv
 from kpi.fmt import change, count, money, money2, pct, points
-from kpi.models import ALL, FIRST_WEEK, LAST_WEEK, OUTSIDE_UK, UK, Filters
+from kpi.models import (
+    ALL,
+    FIRST_WEEK,
+    FLAG_LABELS,
+    LAST_WEEK,
+    OUTSIDE_UK,
+    UK,
+    Filters,
+)
 
 REPO = Path(__file__).resolve().parents[3]
 APP = str(REPO / "app.py")
@@ -42,6 +51,15 @@ def scen(
     end: date = LAST_WEEK,
 ) -> Any:
     return run_scenario(Filters(start=start, end=end, country=country, week=week))
+
+
+def range_line(s: Any) -> str:
+    f, t = s.filters, s.totals
+    return f"Range {f.start} – {f.end + timedelta(days=6)} · revenue {money(t.revenue)} · orders {count(t.orders)} · flagged weeks {count(t.flagged_weeks)}"
+
+
+def captions(at: AppTest) -> list[str]:
+    return [str(c.value) for c in at.caption]
 
 
 def metric(at: AppTest, label: str) -> Any:
@@ -175,9 +193,7 @@ def test_outside_uk_numbers_equal_core() -> None:
     at = app()
     pick(at, "Outside UK")
     s = scen(OUTSIDE_UK)
-    assert metric(at, "Range revenue").value == money(s.totals.revenue)
-    assert metric(at, "Range orders").value == count(s.totals.orders)
-    assert metric(at, "Flagged weeks").value == count(s.totals.flagged_weeks)
+    assert range_line(s) in captions(at)
 
 
 def test_country_change_turns_preset_custom() -> None:
@@ -279,7 +295,7 @@ def test_one_week_partial_range_selects_that_week() -> None:
     assert at.selectbox(key="week").value == date(2011, 12, 5)
     s = scen(ALL, LAST_WEEK, LAST_WEEK, LAST_WEEK)
     assert_cards(at, s)
-    assert metric(at, "Range revenue").value == money(s.totals.revenue)
+    assert range_line(s) in captions(at)
 
 
 def test_one_week_mid_year_range() -> None:
@@ -287,9 +303,9 @@ def test_one_week_mid_year_range() -> None:
     at.date_input(key="dates").set_value((date(2011, 6, 8), date(2011, 6, 10))).run()
     assert not at.exception
     assert at.selectbox(key="week").value == date(2011, 6, 6)
-    assert metric(at, "Range revenue").value == money(
-        scen(ALL, date(2011, 6, 6), date(2011, 6, 6), date(2011, 6, 6)).totals.revenue
-    )
+    assert range_line(
+        scen(ALL, date(2011, 6, 6), date(2011, 6, 6), date(2011, 6, 6))
+    ) in captions(at)
 
 
 def test_one_week_range_all_pages() -> None:
@@ -350,7 +366,9 @@ def test_sparse_country_empty_week_shows_na() -> None:
     assert_cards(at, sw)
     assert metric(at, "Average order value").value == "n/a"
     assert metric(at, "Cancellation rate").value == "n/a"
-    assert any("No sales lines this week" in w.value for w in at.warning)
+    assert ":orange-badge[▲ 1 flag]" in [m.value for m in at.markdown]
+    details = next(e for e in at.expander if e.label == "Flag details")
+    assert "**No sales** · No sales lines this week" in details.markdown[0].value
     for page, _ in PAGES:
         at.switch_page(page).run()
         assert not at.exception, page
@@ -440,7 +458,7 @@ def test_delta_colors() -> None:
             assert m.proto.color == (green if good else red), (week, label)
 
 
-def test_range_strip_equal_on_every_page_for_custom_filters() -> None:
+def test_range_line_equal_on_every_page_for_custom_filters() -> None:
     at = app()
     at.selectbox(key="country").select("France").run()
     at.date_input(key="dates").set_value((date(2011, 2, 7), date(2011, 8, 14))).run()
@@ -448,9 +466,8 @@ def test_range_strip_equal_on_every_page_for_custom_filters() -> None:
     assert at.selectbox(key="week").value == date(2011, 8, 8)
     for page, _ in PAGES[:4]:
         at.switch_page(page).run()
-        assert metric(at, "Range revenue").value == money(s.totals.revenue)
-        assert metric(at, "Range orders").value == count(s.totals.orders)
-        assert metric(at, "Flagged weeks").value == count(s.totals.flagged_weeks)
+        assert range_line(s) in captions(at), page
+        assert not [m for m in at.metric if m.label.startswith("Range")], page
 
 
 # ---------- pages ----------
@@ -504,13 +521,18 @@ def test_flag_rows_equal_scenario_flags(country: str, start: date, end: date) ->
     at.switch_page("views/flags.py").run()
     assert not at.exception
     s = scen(country, chosen_week(at), start, end)
-    if s.flags:
-        assert [len(df.value) for df in at.dataframe] == [len(s.flags)]
-        df = at.dataframe[0].value
-        assert list(df["Reason"]) == [f.reason for f in s.flags]
-        assert list(df["Flag"]) == [f.rule for f in s.flags]
-    else:
-        assert len(at.dataframe) == 0
+    values = [str(m.value) for m in at.markdown]
+    headings = [v for v in values if v.startswith("**20")]
+    flagged = [w for w in s.weeks if w.flags]
+    assert len(headings) == len(flagged) == s.totals.flagged_weeks
+    for heading, w in zip(headings, flagged, strict=True):
+        assert heading.startswith(f"**{w.week_start} – ")
+        listed = values[values.index(heading) + 1]
+        assert listed.count("\n") + 1 == len(w.flags)
+        for f in w.flags:
+            assert f"-badge[{FLAG_LABELS[f.rule]}]" in heading
+            assert f"- **{FLAG_LABELS[f.rule]}:** {f.reason}" in listed
+    if not s.flags:
         assert any("No flagged weeks" in e.value for e in at.success)
 
 
@@ -522,8 +544,9 @@ def test_flags_empty_range_message() -> None:
             at.date_input(key="dates").set_value((start, start)).run()
             at.switch_page("views/flags.py").run()
             assert not at.exception
-            assert len(at.dataframe) == 0
-            assert metric(at, "Flagged weeks").value == "0"
+            assert not [m for m in at.markdown if str(m.value).startswith("**20")]
+            assert range_line(s) in captions(at)
+            assert range_line(s).endswith("flagged weeks 0")
             return
     pytest.fail("no unflagged week found")
 
@@ -580,7 +603,12 @@ def test_top_lists_on_overview_match_core() -> None:
     at = app()
     s = scen()
     assert len(at.dataframe) == 2
-    assert list(at.dataframe[0].value["Name"]) == [r.label for r in s.top_products]
+    assert list(at.dataframe[0].value["Name"]) == [
+        capwords(r.label) for r in s.top_products
+    ]
+    assert list(at.dataframe[0].value["Share of week"]) == pytest.approx(
+        [100 * r.revenue / s.selected.revenue for r in s.top_products]
+    )
     assert list(at.dataframe[0].value["Revenue"]) == pytest.approx(
         [r.revenue for r in s.top_products]
     )
@@ -619,7 +647,14 @@ def test_plotly_template_registered_and_default() -> None:
 def test_plotly_template_separators_and_colours() -> None:
     lay = theme.TEMPLATE.layout
     assert lay.separators == ". "
-    assert lay.paper_bgcolor == theme.SURFACE
+    assert lay.paper_bgcolor == lay.plot_bgcolor == theme.BG
+    assert lay.xaxis.showgrid is False
+    assert lay.yaxis.showgrid is True
+    assert (lay.legend.orientation, lay.legend.x, lay.legend.xanchor) == (
+        "h",
+        1,
+        "right",
+    )
     assert lay.font.color == theme.TEXT
     assert lay.xaxis.gridcolor == theme.BORDER
 
