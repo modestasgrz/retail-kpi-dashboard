@@ -24,6 +24,7 @@ RULES = [
     "orders_swing",
     "large_cancellations",
     "top_line",
+    "placed_cancelled",
 ]
 
 
@@ -80,9 +81,10 @@ def test_base_uses_only_weeks_inside_the_4_week_window(tmp_path: Path) -> None:
         + lines(date(2011, 9, 19), price=500.0)
     )
     s = scen(built(tmp_path, rows))
-    assert s.selected.revenue_vs4w == pytest.approx((500 - 150) / 150 * 100)
+    assert s.selected.net_revenue_vs4w == pytest.approx((500 - 150) / 150 * 100)
     assert (
-        reason(s, "revenue_swing") == "Revenue +233.3% vs 4-week average (£500 vs £150)"
+        reason(s, "revenue_swing")
+        == "Net revenue +233.3% vs 4-week average (£500 vs £150)"
     )
 
 
@@ -93,7 +95,7 @@ def test_week_five_back_is_outside_window(tmp_path: Path) -> None:
         + lines(date(2011, 9, 19), price=500.0)
     )
     s = scen(built(tmp_path, rows))
-    assert s.selected.revenue_vs4w == pytest.approx(400.0)
+    assert s.selected.net_revenue_vs4w == pytest.approx(400.0)
     assert "vs 4-week average (£500 vs £100)" in reason(s, "revenue_swing")
 
 
@@ -106,7 +108,7 @@ def test_empty_weeks_in_window_are_excluded_not_counted_as_zero(
         + lines(date(2011, 9, 19), price=500.0)
     )
     s = scen(built(tmp_path, rows))
-    assert s.selected.revenue_vs4w == pytest.approx(400.0)
+    assert s.selected.net_revenue_vs4w == pytest.approx(400.0)
 
 
 def test_two_weeks_after_a_gap_swing_is_back(tmp_path: Path) -> None:
@@ -117,7 +119,7 @@ def test_two_weeks_after_a_gap_swing_is_back(tmp_path: Path) -> None:
     )
     out = built(tmp_path, rows)
     after_gap = scen(out, week=date(2011, 9, 12))
-    assert after_gap.selected.revenue_vs4w == pytest.approx(0.0)
+    assert after_gap.selected.net_revenue_vs4w == pytest.approx(0.0)
     assert not {"revenue_swing", "orders_swing"} & set(rules(after_gap))
     s = scen(out)
     assert "revenue_swing" in rules(s)
@@ -126,7 +128,7 @@ def test_two_weeks_after_a_gap_swing_is_back(tmp_path: Path) -> None:
 def test_week_after_no_data_has_value_but_no_swing_flag(tmp_path: Path) -> None:
     rows = lines(date(2011, 8, 29), price=100.0) + lines(date(2011, 9, 12), price=900.0)
     s = scen(built(tmp_path, rows), week=date(2011, 9, 12))
-    assert s.selected.revenue_vs4w == pytest.approx(800.0)
+    assert s.selected.net_revenue_vs4w == pytest.approx(800.0)
     assert not {"revenue_swing", "orders_swing"} & set(rules(s))
     gap = scen(built(tmp_path / "x", rows), week=date(2011, 9, 5))
     assert rules(gap) == ["no_data"]
@@ -134,7 +136,7 @@ def test_week_after_no_data_has_value_but_no_swing_flag(tmp_path: Path) -> None:
 
 def test_vs4w_none_without_any_earlier_week_with_lines(tmp_path: Path) -> None:
     s = scen(built(tmp_path, lines(W, price=500.0)))
-    assert s.selected.revenue_vs4w is None
+    assert s.selected.net_revenue_vs4w is None
     assert s.selected.orders_vs4w is None
     assert not {"revenue_swing", "orders_swing"} & set(rules(s))
 
@@ -142,7 +144,7 @@ def test_vs4w_none_without_any_earlier_week_with_lines(tmp_path: Path) -> None:
 def test_vs4w_none_when_only_week_with_lines_is_five_back(tmp_path: Path) -> None:
     rows = lines(date(2011, 8, 15)) + lines(W)
     s = scen(built(tmp_path, rows))
-    assert s.selected.revenue_vs4w is None
+    assert s.selected.net_revenue_vs4w is None
 
 
 def test_no_data_week_has_no_swing_even_with_base(tmp_path: Path) -> None:
@@ -150,7 +152,7 @@ def test_no_data_week_has_no_swing_even_with_base(tmp_path: Path) -> None:
     out = built(tmp_path, rows)
     s = scen(out, week=date(2011, 9, 12))
     assert rules(s) == ["no_data"]
-    assert s.selected.revenue_vs4w == pytest.approx(-100.0)
+    assert s.selected.net_revenue_vs4w == pytest.approx(-100.0)
 
 
 # -------------------------------------------------------------- first shown week
@@ -164,9 +166,10 @@ def test_first_shown_week_uses_hidden_base_weeks(tmp_path: Path) -> None:
         + lines(FIRST_WEEK, price=60.0)
     )
     s = scen(built(tmp_path, rows), week=FIRST_WEEK)
-    assert s.selected.revenue_vs4w == pytest.approx(-70.0)
+    assert s.selected.net_revenue_vs4w == pytest.approx(-70.0)
     assert (
-        reason(s, "revenue_swing") == "Revenue -70.0% vs 4-week average (£60 vs £200)"
+        reason(s, "revenue_swing")
+        == "Net revenue -70.0% vs 4-week average (£60 vs £200)"
     )
     assert s.weeks[0].week_start == FIRST_WEEK
 
@@ -176,17 +179,17 @@ def test_first_shown_week_after_empty_hidden_week_has_no_swing(
 ) -> None:
     rows = lines(date(2010, 11, 22), price=300.0) + lines(FIRST_WEEK, price=60.0)
     s = scen(built(tmp_path, rows), week=FIRST_WEEK)
-    assert s.selected.revenue_vs4w == pytest.approx(-80.0)
+    assert s.selected.net_revenue_vs4w == pytest.approx(-80.0)
     assert not {"revenue_swing", "orders_swing"} & set(rules(s))
 
 
-def test_build_has_57_weeks_per_filter(tmp_path: Path) -> None:
+def test_build_has_105_weeks_per_filter(tmp_path: Path) -> None:
     rows = lines(W, country="Germany") + lines(W)
     out = built(tmp_path, rows)
     w = pd.read_parquet(out / "weekly.parquet")
     sizes = w.groupby("filter").size()
-    assert set(sizes) == {57}
-    assert pd.to_datetime(w["week_start"]).min() == pd.Timestamp("2010-11-08")
+    assert set(sizes) == {105}
+    assert pd.to_datetime(w["week_start"]).min() == pd.Timestamp("2009-12-07")
     assert pd.to_datetime(w["week_start"]).max() == pd.Timestamp(LAST_WEEK)
 
 
@@ -207,20 +210,23 @@ def test_revenue_base_thousands_grouping(tmp_path: Path) -> None:
     rows = lines(date(2011, 9, 12), price=12345.0) + lines(W, price=30000.0)
     s = scen(built(tmp_path, rows))
     assert reason(s, "revenue_swing") == (
-        f"Revenue +143.0% vs 4-week average (£30{N}000 vs £12{N}345)"
+        f"Net revenue +143.0% vs 4-week average (£30{N}000 vs £12{N}345)"
     )
 
 
 @pytest.mark.parametrize(
     ("base_orders", "text"),
     [
-        ([1000, 1001, 1000, 1000], f"1{N}000.3"),  # mean 1000.25 half-up, not half-even
-        ([1000, 1000, 1001, 1001], f"1{N}000.5"),
-        ([1001, 1001, 1001, 1000], f"1{N}000.8"),  # 1000.75
-        ([1000, 1000, 1000, 1000], f"1{N}000.0"),
+        (
+            [1000, 1001, 1000, 1000],
+            f"1{N}000",
+        ),  # mean 1000.25: whole number at ≥ 10 (round 3)
+        ([1000, 1000, 1001, 1001], f"1{N}001"),  # 1000.5 half-up, not half-even
+        ([1001, 1001, 1001, 1000], f"1{N}001"),  # 1000.75
+        ([1000, 1000, 1000, 1000], f"1{N}000"),
     ],
 )
-def test_orders_base_one_decimal_half_up_with_grouping(
+def test_orders_base_whole_number_half_up_with_grouping(
     tmp_path: Path, base_orders: list[int], text: str
 ) -> None:
     rows: list[tuple[Any, ...]] = []
@@ -299,9 +305,10 @@ def test_single_country_uses_its_own_sparse_base(tmp_path: Path) -> None:
     )
     out = built(tmp_path, rows)
     s = scen(out, country="Germany")
-    assert s.selected.revenue_vs4w == pytest.approx((50 - 200) / 200 * 100)
+    assert s.selected.net_revenue_vs4w == pytest.approx((50 - 200) / 200 * 100)
     assert (
-        reason(s, "revenue_swing") == "Revenue -75.0% vs 4-week average (£50 vs £200)"
+        reason(s, "revenue_swing")
+        == "Net revenue -75.0% vs 4-week average (£50 vs £200)"
     )
 
 
@@ -315,7 +322,7 @@ def test_single_country_previous_week_empty_for_that_country_no_swing(
     )
     out = built(tmp_path, rows)
     de = scen(out, country="Germany")
-    assert de.selected.revenue_vs4w == pytest.approx(400.0)
+    assert de.selected.net_revenue_vs4w == pytest.approx(400.0)
     assert not {"revenue_swing", "orders_swing"} & set(rules(de))
     assert "revenue_swing" in rules(scen(out, country=ALL))
 
@@ -323,7 +330,7 @@ def test_single_country_previous_week_empty_for_that_country_no_swing(
 def test_single_country_without_any_base_is_none(tmp_path: Path) -> None:
     rows = lines(date(2011, 9, 12)) + lines(W, country="Germany")
     s = scen(built(tmp_path, rows), country="Germany")
-    assert s.selected.revenue_vs4w is None
+    assert s.selected.net_revenue_vs4w is None
     assert s.selected.orders_vs4w is None
 
 
@@ -369,10 +376,10 @@ def test_real_data_end_is_2011_12_09() -> None:
     assert type(s.data_end) is date
 
 
-def test_real_weekly_has_57_weeks_per_filter(weekly: pd.DataFrame) -> None:
+def test_real_weekly_has_105_weeks_per_filter(weekly: pd.DataFrame) -> None:
     sizes = weekly.groupby("filter").size()
-    assert set(sizes) == {57}
-    assert weekly["week_start"].min() == date(2010, 11, 8)
+    assert set(sizes) == {105}
+    assert weekly["week_start"].min() == date(2009, 12, 7)
 
 
 def test_real_vs4w_and_swing_flags_recomputed_independently(
@@ -384,9 +391,17 @@ def test_real_vs4w_and_swing_flags_recomputed_independently(
         for w in s.weeks:
             prev = [w.week_start - timedelta(days=7 * n) for n in range(1, 5)]
             base = by_week.loc[prev]
-            base = base[base["product_lines"] > 0]
+            base = base[base["product_lines"] > 0].assign(
+                net=lambda b: b["revenue"] - b["cancelled_value"]
+            )
             now = by_week.loc[w.week_start]
-            for field, col in (("revenue_vs4w", "revenue"), ("orders_vs4w", "orders")):
+            now = pd.concat(
+                [now, pd.Series({"net": now["revenue"] - now["cancelled_value"]})]
+            )
+            for field, col in (
+                ("net_revenue_vs4w", "net"),
+                ("orders_vs4w", "orders"),
+            ):
                 got = getattr(w, field)
                 if base.empty or base[col].mean() <= 0:
                     assert got is None, (name, w.week_start, field)
@@ -396,7 +411,7 @@ def test_real_vs4w_and_swing_flags_recomputed_independently(
             prev_lines = by_week["product_lines"].loc[w.week_start - timedelta(days=7)]
             ok = now["product_lines"] > 0 and prev_lines > 0
             for rule, val in (
-                ("revenue_swing", w.revenue_vs4w),
+                ("revenue_swing", w.net_revenue_vs4w),
                 ("orders_swing", w.orders_vs4w),
             ):
                 exp_flag = (
@@ -421,10 +436,12 @@ def test_real_flagged_reasons_use_independent_base(weekly: pd.DataFrame) -> None
             base = g.loc[[w.week_start - timedelta(days=7 * n) for n in range(1, 5)]]
             base = base[base["product_lines"] > 0]
             if f.rule == "revenue_swing":
-                tail = f"({money(w.revenue)} vs {money(float(base['revenue'].mean()))})"
-                head = f"Revenue {change(w.revenue_vs4w)} vs 4-week average "
+                net = base["revenue"] - base["cancelled_value"]
+                tail = f"({money(w.net_revenue)} vs {money(float(net.mean()))})"
+                head = f"Net revenue {change(w.net_revenue_vs4w)} vs 4-week average "
             else:
-                tail = f"({count(w.orders)} vs {grouped(rounded(float(base['orders'].mean()), '0.1'))})"
+                mean = float(base["orders"].mean())
+                tail = f"({count(w.orders)} vs {grouped(rounded(mean, '1' if mean >= 10 else '0.1'))})"
                 head = f"Orders {change(w.orders_vs4w)} vs 4-week average "
             assert f.reason == head + tail
     assert seen >= 9

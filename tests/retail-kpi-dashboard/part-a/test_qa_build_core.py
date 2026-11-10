@@ -199,12 +199,12 @@ def test_read_concatenates_sheets_and_overlap_becomes_duplicates(
 # ------------------------------------------------------- build on odd inputs
 
 
-def test_every_filter_has_57_weeks_and_week_bounds(tmp_path: Path) -> None:
+def test_every_filter_has_105_weeks_and_week_bounds(tmp_path: Path) -> None:
     out = built(tmp_path, [row("1", at(20)), row("2", at(21), country="France")])
     w = pd.read_parquet(out / "weekly.parquet")
     sizes = w.groupby("filter").size()
-    assert set(sizes) == {57}
-    assert w["week_start"].min() == pd.Timestamp("2010-11-08")
+    assert set(sizes) == {105}
+    assert w["week_start"].min() == pd.Timestamp("2009-12-07")
     assert w["week_start"].max() == pd.Timestamp(LAST_WEEK)
     assert set(sizes.index) == set(
         json.loads((out / "meta.json").read_text())["countries"]
@@ -250,7 +250,10 @@ def test_week_boundaries_sunday_night_and_monday_midnight(tmp_path: Path) -> Non
     assert a[pd.Timestamp("2011-12-05")] == 4.0
     assert a[pd.Timestamp("2011-09-19")] == 16.0
     assert a[pd.Timestamp("2011-09-26")] == 32.0
-    assert a.sum() == 2.0 + 4.0 + 16.0 + 32.0
+    assert (
+        a[pd.Timestamp("2010-11-01")] == 1.0
+    )  # a year-over-year base week since round 3
+    assert a.sum() == 1.0 + 2.0 + 4.0 + 16.0 + 32.0
     meta = json.loads((out / "meta.json").read_text())
     assert meta["data_end"] == "2011-12-12T00:00:00"
     s = scen(out, week=LAST_WEEK)
@@ -630,12 +633,16 @@ def test_no_large_cancellations_flag_when_revenue_is_zero(tmp_path: Path) -> Non
 @pytest.mark.parametrize(
     ("now_price", "flagged", "text"),
     [
-        (140.0, True, "Revenue +40.0% vs 4-week average (£140 vs £100)"),
+        (140.0, True, "Net revenue +40.0% vs 4-week average (£140 vs £100)"),
         (139.9, False, ""),
-        (60.0, True, "Revenue -40.0% vs 4-week average (£60 vs £100)"),
-        (60.04, True, "Revenue -40.0% vs 4-week average (£60 vs £100)"),
+        (60.0, True, "Net revenue -40.0% vs 4-week average (£60 vs £100)"),
+        (60.04, True, "Net revenue -40.0% vs 4-week average (£60 vs £100)"),
         (60.06, False, ""),
-        (1000.0, True, "Revenue +900.0% vs 4-week average (£1" + N + "000 vs £100)"),
+        (
+            1000.0,
+            True,
+            "Net revenue +900.0% vs 4-week average (£1" + N + "000 vs £100)",
+        ),
     ],
 )
 def test_revenue_swing_boundaries(
@@ -668,7 +675,7 @@ def test_orders_swing_boundary_and_reason(tmp_path: Path) -> None:
 def test_swing_not_flagged_when_previous_week_is_empty(tmp_path: Path) -> None:
     rows = [row("1", at(6), price=100.0), row("2", at(20), price=1000.0)]
     s = scen(built(tmp_path, rows))
-    assert s.selected.revenue_vs4w == pytest.approx(900.0)
+    assert s.selected.net_revenue_vs4w == pytest.approx(900.0)
     assert not {"revenue_swing", "orders_swing"} & set(rules(s))
 
 
@@ -753,7 +760,7 @@ def test_csv_shape_for_range_with_empty_and_zero_base_weeks(tmp_path: Path) -> N
     assert b"\r" not in data and data.endswith(b"\n")
     table = parse(data)
     assert len(table) == 4
-    assert {len(r) for r in table} == {17}
+    assert {len(r) for r in table} == {22}
     assert [r[0] for r in table[1:]] == ["2011-09-12", "2011-09-19", "2011-09-26"]
     head = dict(zip(table[0], table[2], strict=True))
     assert head["revenue_gbp"] == "12.35" or head["revenue_gbp"] == "12.34"
@@ -774,7 +781,9 @@ def test_csv_shape_for_range_with_empty_and_zero_base_weeks(tmp_path: Path) -> N
 def test_csv_single_week_range(tmp_path: Path) -> None:
     table = parse(weekly_csv(scen(built(tmp_path, [row("1", at(20))]))))
     assert len(table) == 2
-    assert table[1][-1] == "partial_week; top_line"
+    assert (
+        dict(zip(table[0], table[1], strict=True))["flags"] == "partial_week; top_line"
+    )
 
 
 def test_csv_money_is_rounded_half_up_like_the_screen(tmp_path: Path) -> None:

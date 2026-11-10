@@ -21,6 +21,7 @@ RULE_ORDER = [
     "orders_swing",
     "large_cancellations",
     "top_line",
+    "placed_cancelled",
 ]
 ADDITIVE = [
     "revenue",
@@ -88,8 +89,8 @@ def test_weekly_has_one_row_per_filter_and_week_and_no_nan(
     assert weekly["filter"].nunique() == len(names)
     assert set(weekly["filter"]) == set(names)
     assert not weekly.duplicated(["filter", "week_start"]).any()
-    assert weekly.groupby("filter").size().eq(57).all()
-    assert weekly["week_start"].min() == pd.Timestamp("2010-11-08")
+    assert weekly.groupby("filter").size().eq(105).all()
+    assert weekly["week_start"].min() == pd.Timestamp("2009-12-07")
     assert weekly["week_start"].max() == pd.Timestamp(LAST_WEEK)
     assert (weekly["week_start"].dt.day_of_week == 0).all()
     numeric = weekly.drop(
@@ -208,13 +209,17 @@ def test_products_table_reconciles_with_weekly(
     weekly: pd.DataFrame, products: pd.DataFrame
 ) -> None:
     keys = ["filter", "week_start"]
-    by_week = products.groupby(keys)[["revenue", "units"]].sum()
-    base = weekly.set_index(keys)[["revenue", "units"]]
+    columns = ["revenue", "units", "cancelled_value"]
+    by_week = products.groupby(keys)[columns].sum()
+    shown = weekly[weekly["week_start"] >= pd.Timestamp("2010-11-08")]
+    base = shown.set_index(keys)[columns]
     joined = base.join(by_week.add_suffix("_p"), how="left").fillna(0)
     assert (joined["revenue"] - joined["revenue_p"]).abs().max() < 1e-6
     assert (joined["units"] == joined["units_p"]).all()
+    assert (joined["cancelled_value"] - joined["cancelled_value_p"]).abs().max() < 1e-6
     assert not products.duplicated([*keys, "stock_code"]).any()
-    assert (products["revenue"] > 0).all()
+    assert (products["revenue"] >= 0).all() and (products["cancelled_value"] >= 0).all()
+    assert ((products["revenue"] > 0) | (products["cancelled_value"] > 0)).all()
     assert products["description"].notna().all()
     assert products["week_start"].min() >= pd.Timestamp("2010-11-08")
 
@@ -274,7 +279,7 @@ def test_flags_follow_rule_order_and_their_definitions(
             if prev is not None:
                 comparable = w.product_lines > 0 and prev > 0
                 assert ("revenue_swing" in got) is (
-                    comparable and swing(w.revenue_vs4w)
+                    comparable and swing(w.net_revenue_vs4w)
                 ), (c, w.week_start)
                 assert ("orders_swing" in got) is (
                     comparable and swing(w.orders_vs4w)
@@ -293,9 +298,11 @@ def test_flag_reasons_use_narrow_nbsp_for_thousands(
     reason = next(
         f.reason
         for f in scenarios[ALL].flags
-        if f.rule == "large_cancellations" and f.week_start == LAST_WEEK
+        if f.rule == "placed_cancelled" and f.week_start == LAST_WEEK
     )
-    assert reason == f"£172{N}782 cancelled against £483{N}725 revenue (35.7%)"
+    assert reason == (
+        f"Placed and cancelled: £168{N}470, net £0 (Paper Craft , Little Birdie, invoice 581483)"
+    )
 
 
 def test_top_lists_are_sorted_bounded_and_consistent(
@@ -361,7 +368,7 @@ def test_csv_full_year_has_53_rows_matching_scenario() -> None:
     table = list(csv.reader(io.StringIO(weekly_csv(s).decode("utf-8"))))
     assert len(table) == 54
     assert [r[0] for r in table[1:]] == [str(d) for d in SHOWN]
-    assert {len(r) for r in table} == {17}
+    assert {len(r) for r in table} == {22}
     for r, w in zip(table[1:], s.weeks, strict=True):
         assert float(r[1]) == pytest.approx(w.revenue, abs=0.0051)
         assert int(r[2]) == w.orders

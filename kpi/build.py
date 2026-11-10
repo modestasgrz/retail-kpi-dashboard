@@ -10,7 +10,9 @@ from kpi.data import BUCKETS, PRODUCT_CODE, clean, read
 from kpi.download import FILE_NAME, download
 from kpi.models import ALL, FIRST_WEEK, LAST_WEEK, OUTSIDE_UK, UK
 
-WEEKS = pd.date_range(FIRST_WEEK - timedelta(days=28), LAST_WEEK, freq="7D")
+WEEKS = pd.date_range(FIRST_WEEK - timedelta(days=364), LAST_WEEK, freq="7D")
+PRODUCT_WEEKS = WEEKS[WEEKS >= pd.Timestamp(FIRST_WEEK - timedelta(days=28))]
+PAIR = ["week", "StockCode", "Customer ID", "Price"]
 DQ_COLUMNS = [f"{b}_lines" for b in BUCKETS]
 
 
@@ -57,23 +59,83 @@ def weekly(lines: pd.DataFrame) -> pd.DataFrame:
     out["top_line_revenue"] = top["revenue"]
     out["top_line_description"] = top["Description"].fillna("")
     out["top_line_invoice"] = top["Invoice"].fillna("")
+    pairs = placed_and_cancelled(products, product_cancels)
+    out["matched_cancelled_value"] = (
+        pairs.groupby("week")["matched"].sum().reindex(WEEKS).fillna(0.0)
+    )
+    biggest = (
+        pairs.sort_values(
+            ["matched", "Description", "Invoice"],
+            ascending=[False, True, True],
+            kind="stable",
+        )
+        .drop_duplicates("week")
+        .set_index("week")
+        .reindex(WEEKS)
+    )
+    out["pc_cancelled"] = biggest["matched"].fillna(0.0)
+    out["pc_placed"] = biggest["placed"].fillna(0.0)
+    out["pc_description"] = biggest["Description"].fillna("")
+    out["pc_invoice"] = biggest["Invoice"].fillna("")
     out.index.name = "week_start"
     return out.reset_index()
 
 
+def placed_and_cancelled(products: pd.DataFrame, cancels: pd.DataFrame) -> pd.DataFrame:
+    """Pairs of DEC-25: product and cancellation lines with the same week, StockCode, Customer ID and Price."""
+    placed = products.dropna(subset=["Customer ID"])
+    largest = placed.sort_values(
+        ["revenue", "InvoiceDate"], ascending=[False, True], kind="stable"
+    ).drop_duplicates(PAIR)
+    cancelled = (
+        cancels.dropna(subset=["Customer ID"])
+        .assign(cancelled_qty=lambda d: -d["Quantity"])
+        .groupby(PAIR)["cancelled_qty"]
+        .sum()
+    )
+    pairs = (
+        placed.groupby(PAIR)["Quantity"]
+        .sum()
+        .rename("placed_qty")
+        .to_frame()
+        .join(cancelled, how="inner")
+        .join(largest.set_index(PAIR)[["Description", "Invoice"]])
+        .reset_index()
+    )
+    pairs["matched"] = (
+        pairs[["placed_qty", "cancelled_qty"]].min(axis=1) * pairs["Price"]
+    )
+    pairs["placed"] = pairs["placed_qty"] * pairs["Price"]
+    return pairs
+
+
 def products(lines: pd.DataFrame) -> pd.DataFrame:
-    """Revenue and units per week and StockCode; description = most frequent one in that week (ties: alphabetical)."""
+    """Revenue, units and cancelled value per week and StockCode; description = most frequent one in that week (ties: alphabetical), from the cancellation lines when the code only has those."""
+    lines = lines[lines["week"].isin(PRODUCT_WEEKS)]
     p = lines[lines["bucket"] == "product"]
-    sums = p.groupby(["week", "StockCode"]).agg(
-        revenue=("revenue", "sum"), units=("Quantity", "sum")
+    c = lines[
+        (lines["bucket"] == "cancellation") & lines["StockCode"].str.match(PRODUCT_CODE)
+    ]
+    sums = (
+        p.groupby(["week", "StockCode"])
+        .agg(revenue=("revenue", "sum"), units=("Quantity", "sum"))
+        .join(
+            (-c.groupby(["week", "StockCode"])["revenue"].sum()).rename(
+                "cancelled_value"
+            ),
+            how="outer",
+        )
+        .fillna({"revenue": 0.0, "units": 0, "cancelled_value": 0.0})
+        .astype({"units": "int64"})
     )
     labels = (
-        p.groupby(["week", "StockCode", "Description"])
+        pd.concat([p.assign(source=0), c.assign(source=1)])
+        .groupby(["week", "StockCode", "source", "Description"])
         .size()
         .reset_index(name="n")
         .sort_values(
-            ["week", "StockCode", "n", "Description"],
-            ascending=[True, True, False, True],
+            ["week", "StockCode", "source", "n", "Description"],
+            ascending=[True, True, True, False, True],
         )
         .drop_duplicates(["week", "StockCode"])
         .set_index(["week", "StockCode"])["Description"]
