@@ -4,21 +4,28 @@ from datetime import timedelta
 import streamlit as st
 
 from kpi.models import FLAG_LABELS
-from views.ui import flag_line, header
+from views.ui import flag_line, header, strip
 
 GRAY = {"no_data", "partial_week"}
 
 s = header("Flagged weeks")
+counts = Counter(f.rule for f in s.flags)
+strip(
+    "Which weeks need a look, and why?",
+    f"{s.totals.flagged_weeks} of {s.totals.weeks} weeks flagged: "
+    + " · ".join(f"{FLAG_LABELS[rule]} {n}" for rule, n in counts.items())
+    + "."
+    if s.flags
+    else "No week flagged in this range.",
+    "Read each reason; for swings, the drivers show which products and countries moved."
+    if s.flags
+    else "Widen the date range or pick another country in the sidebar.",
+)
 if not s.flags:
     st.success(
         "No flagged weeks in the selected range.", icon=":material/check_circle:"
     )
 else:
-    counts = Counter(f.rule for f in s.flags)
-    st.caption(
-        " · ".join(f"{FLAG_LABELS[rule]}: {n}" for rule, n in counts.items()),
-        help="Rules and thresholds: see Methodology & data. A flag asks for a look; it is not an error in the data.",
-    )
     with st.container(key="flags"):
         for w in s.weeks:
             if not w.flags:

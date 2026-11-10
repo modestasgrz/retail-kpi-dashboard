@@ -1,38 +1,48 @@
-html, body, p, li, label, input, button, h1, h2, h3, h4, h5, h6, td, th,
-[data-testid="stMarkdownContainer"], [data-testid="stMetricValue"] {
-  font-family: "Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
-  font-variant-numeric: tabular-nums;
-}
-.block-container { padding: 2.2rem 2rem 3rem; max-width: 1360px; }
+/* Graphite base (shared with P6, from streamlit-batch/theme-graphite/style.css); variables are injected from kpi/theme.py.
+   Not taken: the shared rule that greys metric deltas (P5 colours changes by meaning, DEC-29). */
+html, body, [class*="css"], p, li, label, input, button, h1, h2, h3, h4, h5, h6, td, th,
+[data-testid="stMarkdownContainer"], .stMarkdown, .stCaption { font-family: var(--font); }
+[data-testid="stSidebar"] { background: var(--surface); border-right: 1px solid var(--border); }
+[data-testid="stSidebarNavLink"][aria-current="page"] { background: var(--surface-2) !important; }
 h1 { font-size: 1.75rem !important; font-weight: 650; letter-spacing: -0.01em; padding-bottom: 0.2rem !important; }
-[data-testid="stSidebar"] { border-right: 1px solid #22324F; }
-[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: #A3B1C8; }
-.st-key-meta [data-testid="stCaptionContainer"] p { font-size: 12px; white-space: nowrap; }
-.st-key-asof [data-testid="stCaptionContainer"], .st-key-pill [data-testid="stMarkdownContainer"] { text-align: right; }
-
-.st-key-headline { border-left: 4px solid #3B82F6 !important; background: #13203A; }
-.st-key-headline p { font-size: 1.15rem; font-weight: 600; line-height: 1.45; }
 
 [data-testid="stMetric"] {
-  background: #13203A;
-  border: 1px solid #22324F;
-  border-radius: 10px;
-  padding: 14px 16px;
+  background: var(--card-fill);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
 }
-[data-testid="stMetricLabel"] p { color: #A3B1C8; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.st-key-big [data-testid="stMetricValue"] { font-size: 2.1rem; }
+[data-testid="stMetricLabel"] { color: var(--muted); }
+[data-testid="stMetricLabel"] p { font-size: 12px !important; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
+[data-testid="stMetricValue"] { font-weight: 600; line-height: 1.25; white-space: nowrap; font-feature-settings: "tnum"; letter-spacing: 0; }
+[data-testid="stMetricValue"] * { overflow: visible !important; text-overflow: clip !important; }
 [data-testid="stMetric"] svg { background: transparent !important; }
+[data-testid="stExpander"] details, [data-testid="stDataFrame"] { border-radius: var(--radius) !important; }
+[data-testid="stVerticalBlockBorderWrapper"] { border-radius: var(--radius) !important; border-color: var(--border) !important; }
+
+/* Reading strip (DEC-30): label column + text, no box. */
+.how-to-read { display: grid; gap: 3px; margin: 2px 0 6px; color: var(--muted); font-size: 0.9rem; }
+.how-to-read > div { display: grid; grid-template-columns: 110px 1fr; }
+.how-to-read b { color: var(--text); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.06em; padding-top: 2px; }
+.how-to-read .now { color: var(--text); }
+
+/* P5 layout. */
+.block-container { padding: 2.2rem 2rem 3rem; max-width: 1360px; }
+td, [data-testid="stMetricValue"], .how-to-read { font-feature-settings: "tnum"; }
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: var(--muted); }
+.st-key-meta [data-testid="stCaptionContainer"] p { font-size: 12px; white-space: nowrap; }
+.st-key-asof [data-testid="stCaptionContainer"], .st-key-pill [data-testid="stMarkdownContainer"] { text-align: right; }
+.st-key-big [data-testid="stMetricValue"] { font-size: 2rem; }
 .st-key-big [data-testid="stCaptionContainer"] p { font-size: 0.8rem; margin-top: -0.35rem; }
 .st-key-small [data-testid="stMetric"] { padding: 10px 12px; height: 100%; }
 .st-key-small [data-testid="stMetricValue"] { font-size: 1.15rem; line-height: 1.3; }
-.st-key-small [data-testid="stMetricLabel"] p { font-size: 0.75rem; }
+.st-key-small [data-testid="stMetricLabel"] p { font-size: 11px !important; }
 .st-key-small [data-testid="stMetricDelta"] { font-size: 0.75rem; }
 .st-key-small [data-testid="stMetricDelta"] div { overflow: visible; text-overflow: clip; }
 @media (max-width: 1366px) {
   .st-key-small [data-testid="stHorizontalBlock"] { flex-wrap: wrap; row-gap: 0.5rem; }
   .st-key-small [data-testid="stColumn"] { flex: 1 1 calc(33.333% - 1rem) !important; min-width: calc(33.333% - 1rem) !important; }
 }
-
 .st-key-flags [data-testid="stVerticalBlockBorderWrapper"] { padding: 0.15rem 0.2rem; }
 .st-key-flags [data-testid="stVerticalBlockBorderWrapper"] p,
 .st-key-flags [data-testid="stVerticalBlockBorderWrapper"] li { margin-bottom: 0.1rem; font-size: 0.92rem; }

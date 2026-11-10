@@ -7,17 +7,35 @@ import pandas as pd
 import streamlit as st
 
 from kpi.fmt import change, count, money, money2
-from kpi.models import ALL
-from views.ui import flag_line, header
+from kpi.models import ALL, FLAG_LABELS
+from views.ui import flag_line, header, strip
 
 LABEL = "Weekly summary written by AI in an earlier run; every figure was checked against the computed numbers. This app makes no AI calls."
 AI = "AI-written summary, saved; numbers above are computed"
 YEAR = timedelta(days=364)
+PLAIN = {
+    "net_revenue": "What the week's sales brought in after cancellations.",
+    "orders": "How many separate orders customers placed.",
+    "net_aov": "What an order was worth on average, after cancellations.",
+    "revenue": "Sales before cancellations are taken off.",
+    "units": "How many items were sold.",
+    "customers": "How many different customers bought (only lines with a customer id count).",
+    "new_customers": "Customers buying from the shop for the first time.",
+    "returning_customers": "Customers who had bought before.",
+    "cancelled_value": "The value of items cancelled this week; lower is better.",
+}
 
 s = header("Overview")
 w = s.selected
-with st.container(border=True, key="headline"):
-    st.markdown(s.headline)
+strip(
+    "How did the selected week go, and does anything need a look?",
+    s.headline,
+    "No sales this week. Pick another week in the sidebar."
+    if w.product_lines == 0
+    else f"Open Flag details below: {', '.join(FLAG_LABELS[f.rule] for f in w.flags)}."
+    if w.flags
+    else "Nothing flagged. Scan the top products and countries, then switch weeks in the sidebar.",
+)
 
 week, pill = st.columns([4, 1], vertical_alignment="center")
 week.markdown(
@@ -90,7 +108,7 @@ with st.container(key="big"):
             delta_color="off" if delta == "n/a" else "normal",
             delta_arrow="off" if delta == "n/a" else "auto",
             delta_description="vs last week",
-            help=s.sources[k],
+            help=f"{PLAIN[k]}\n\n{s.sources[k]}",
             chart_data=[v for x in recent if (v := getattr(x, k)) is not None],
             chart_type="area",
         )
@@ -105,12 +123,12 @@ with st.container(key="big"):
             )
             col.caption(
                 "— vs same week last year",
-                help=f"No comparable week a year earlier: {why}.",
+                help=f"There is no fair comparison with last year for this week. No comparable week a year earlier: {why}.",
             )
         else:
             col.caption(
                 f"{change(yoy)} vs same week last year",
-                help=f"Same week a year earlier: {when}"
+                help=f"How this week compares with the same week a year ago. Same week a year earlier: {when}"
                 + (f", {fmt(value / (1 + yoy / 100))}." if yoy != -100 else "."),
             )
 
@@ -151,7 +169,7 @@ with st.container(key="small"):
             delta,
             delta_color="off" if none else color,
             delta_arrow="off" if none else "auto",
-            help=s.sources[k],
+            help=f"{PLAIN[k]}\n\n{s.sources[k]}",
         )
 
 left, right = st.columns(2)
@@ -181,7 +199,7 @@ for col, title, rows, name in (
                         min_value=0,
                         max_value=max(shares),
                         width=95,
-                        help="Share of the week's gross revenue; the longest bar is the largest share.",
+                        help="How much of the week's sales each one brought in. Share of the week's gross revenue; the longest bar is the largest share.",
                     ),
                 },
             )
