@@ -110,10 +110,6 @@ def wow(now: float | None, base: float | None) -> float | None:
     return (now - base) / base * 100
 
 
-def average(values: list[float]) -> float | None:
-    return sum(values) / len(values) if values else None
-
-
 def derived(r: dict[str, Any]) -> dict[str, Any]:
     orders, cancels = int(r["orders"]), int(r["cancellation_invoices"])
     return {
@@ -233,8 +229,9 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
         row: dict[str, Any] = {**kpis, "week_start": week}
         row.update({f"{k}_wow": wow(kpis[k], prev[k]) for k in WOW})
         before = [table[week - timedelta(days=7 * n)] for n in range(1, 5)]
+        sold = [b for b in before if int(b["product_lines"]) > 0]
         avg4 = {
-            k: average([float(b[k]) for b in before if int(b["product_lines"]) > 0])
+            k: sum(float(b[k]) for b in sold) / len(sold) if sold else None
             for k in ("revenue", "orders")
         }
         row["revenue_vs4w"] = wow(kpis["revenue"], avg4["revenue"])

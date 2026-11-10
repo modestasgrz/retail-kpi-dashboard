@@ -666,8 +666,9 @@ def test_orders_swing_boundary_and_reason(tmp_path: Path) -> None:
 
 
 def test_swing_not_flagged_when_previous_week_is_empty(tmp_path: Path) -> None:
-    s = scen(built(tmp_path, [row("1", at(20), price=1000.0)]))
-    assert s.selected.revenue_wow is None
+    rows = [row("1", at(6), price=100.0), row("2", at(20), price=1000.0)]
+    s = scen(built(tmp_path, rows))
+    assert s.selected.revenue_vs4w == pytest.approx(900.0)
     assert not {"revenue_swing", "orders_swing"} & set(rules(s))
 
 

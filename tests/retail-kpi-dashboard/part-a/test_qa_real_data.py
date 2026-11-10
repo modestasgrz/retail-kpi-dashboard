@@ -164,6 +164,7 @@ def test_single_country_rows_sum_to_all_countries(
     weekly: pd.DataFrame, names: list[str], column: str
 ) -> None:
     singles = [c for c in names if c not in (ALL, OUTSIDE_UK)]
+    weekly = weekly[weekly["week_start"] >= pd.Timestamp(FIRST_WEEK)]
     everything = weekly[weekly["filter"] == ALL].set_index("week_start")[column]
     summed = weekly[weekly["filter"].isin(singles)].groupby("week_start")[column].sum()
     pd.testing.assert_series_equal(
@@ -222,6 +223,7 @@ def test_products_all_equals_sum_of_countries_per_stock_code(
     products: pd.DataFrame, names: list[str]
 ) -> None:
     singles = [c for c in names if c not in (ALL, OUTSIDE_UK)]
+    products = products[products["week_start"] >= pd.Timestamp(FIRST_WEEK)]
     keys = ["week_start", "stock_code"]
     a = products[products["filter"] == ALL].groupby(keys)["revenue"].sum()
     b = products[products["filter"].isin(singles)].groupby(keys)["revenue"].sum()

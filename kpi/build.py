@@ -97,7 +97,14 @@ def build(raw: pd.DataFrame, out_dir: Path) -> None:
     df["first_week"] = pd.to_datetime(df["Customer ID"].map(first_seen.to_dict()))
     df = df[df["week"].isin(WEEKS)]
     countries = sorted(
-        set(df.loc[df["bucket"] == "product", "Country"]) - {UK, ""}, key=str.casefold
+        set(
+            df.loc[
+                (df["bucket"] == "product") & (df["week"] >= pd.Timestamp(FIRST_WEEK)),
+                "Country",
+            ]
+        )
+        - {UK, ""},
+        key=str.casefold,
     )
     masks = {
         ALL: pd.Series(True, index=df.index),
