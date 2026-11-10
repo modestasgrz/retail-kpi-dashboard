@@ -13,7 +13,7 @@ RED = "#EF4444"
 GOOD = "#34D399"
 BAD = "#F87171"
 FONT = '"Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif'
-RETURNING = "#64748B"
+RETURNING = MUTED
 NEW = BLUE
 SERIES = [BLUE, RETURNING]
 

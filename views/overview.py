@@ -101,7 +101,7 @@ with st.container(key="big"):
                 if partial
                 else "no sales this week"
                 if w.product_lines == 0
-                else f"no sales in {when}"
+                else f"{when} had no sales or a zero or negative value"
             )
             col.caption(
                 "— vs same week last year",
@@ -111,7 +111,7 @@ with st.container(key="big"):
             col.caption(
                 f"{change(yoy)} vs same week last year",
                 help=f"Same week a year earlier: {when}"
-                + (f", {fmt(value / (1 + yoy / 100))}." if yoy > -100 else "."),
+                + (f", {fmt(value / (1 + yoy / 100))}." if yoy != -100 else "."),
             )
 
 small: list[tuple[str, str, str, str, Literal["normal", "inverse"]]] = [

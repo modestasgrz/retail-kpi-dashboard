@@ -24,36 +24,26 @@ def header(title: str) -> Scenario:
 
 
 def flag_line(flag: Flag, template: str) -> str:
-    """One markdown list item: `template` with {label} and {reason}, or just "- reason" when the reason already starts with its label (Placed and cancelled); then the driver lines, nested."""
+    """One markdown list item: `template` with {label} and {reason}, or just "- reason" when the reason already starts with its label (Placed and cancelled); then one nested line per driver set (DEC-24), e.g. "Top products: Lamp +£50 · Mug Red +£29 (100.0% of the change)"."""
     label = FLAG_LABELS[flag.rule]
-    head = (
+    lines = [
         f"- {flag.reason}"
         if flag.reason.startswith(f"{label}:")
         else template.format(label=label, reason=flag.reason)
-    )
-    return head + "".join(f"\n    - {line}" for line in driver_lines(flag))
-
-
-def driver_lines(flag: Flag) -> list[str]:
-    """One line per driver set of a swing flag (DEC-24), e.g. "Top products: Lamp +£50 · Mug Red +£29 (100.0% of the change)"."""
-    lines = []
+    ]
     for d in flag.drivers:
         if not d.items:
             continue
-        if flag.rule == "revenue_swing":
-            items = [
-                f"{i.label} {'+' if i.change >= 0 else ''}{money(i.change)}"
-                for i in d.items
-            ]
-        else:
-            items = []
-            for i in d.items:
+        items = []
+        for i in d.items:
+            sign = "+" if i.change >= 0 else "-"
+            if flag.rule == "revenue_swing":
+                items.append(f"{i.label} {sign}{money(abs(i.change))}")
+            else:
                 n = rounded(abs(i.change), "0.1")
                 n = n.to_integral_value() if n == n.to_integral_value() else n
-                items.append(
-                    f"{i.label} {'+' if i.change >= 0 else '-'}{grouped(n)} orders"
-                )
+                items.append(f"{i.label} {sign}{grouped(n)} orders")
         lines.append(
-            f"Top {PLURAL[d.by]}: {' · '.join(items)} ({pct(d.explained_pct)} of the change)"
+            f"    - Top {PLURAL[d.by]}: {' · '.join(items)} ({pct(d.explained_pct)} of the change)"
         )
-    return lines
+    return "\n".join(lines)

@@ -24,7 +24,7 @@ Net revenue is revenue minus cancelled value; it is the headline figure on every
 | Returning customers | Customers − New customers |
 | Cancelled | −sum(Quantity × Price) over cancellation lines with a product code; its tooltip also shows the share of gross revenue and the cancellation rate (cancellation invoices / (orders + cancellation invoices)) |
 
-Change vs last week = (this week − last week) / last week × 100, shown as n/a when last week is 0 or negative. Change vs same week last year compares with the week 52 weeks earlier (the same ISO week); it shows — when either week has no sales or this week is partial. Totals over a range add the weekly values; customer counts aren't added across weeks because one customer can buy in many weeks.
+Change vs last week = (this week − last week) / last week × 100, shown as n/a when last week is 0 or negative. Change vs same week last year compares with the week 52 weeks earlier (the same ISO week); it shows — when either week has no sales, the base week's value is zero or negative, or this week is partial. Totals over a range add the weekly values; customer counts aren't added across weeks because one customer can buy in many weeks.
 
 ### Cleaning rules (each line gets the first rule it matches)
 

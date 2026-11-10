@@ -32,7 +32,10 @@ partial = next(
 )
 full = [ok and i != partial for i, ok in enumerate(sold)]
 marked = [bool(w.flags) and ok for w, ok in zip(s.weeks, full, strict=True)]
-top = 1.08 * max((v for v, ok in zip(values, full, strict=True) if ok), default=0.0)
+shown_full = [v for v, ok in zip(values, full, strict=True) if ok]
+top = 1.08 * max(shown_full, default=0.0)
+bottom = 1.08 * min([0.0, *shown_full])
+clipped = partial is not None and top > 0 and values[partial] > top
 
 
 def chart(
@@ -40,7 +43,7 @@ def chart(
     traces: list[BaseTraceType],
     money_axis: bool,
     notes: list[dict[str, object]],
-    y_max: float | None = None,
+    y_range: list[float] | None = None,
 ) -> None:
     st.markdown(f"**{title}**")
     fig = go.Figure(traces)
@@ -49,7 +52,7 @@ def chart(
         height=330,
         yaxis={"rangemode": "tozero"}
         | ({"tickprefix": "£", "tickformat": "~s"} if money_axis else {})
-        | ({"range": [0, y_max]} if y_max else {}),
+        | ({"range": y_range} if y_range else {}),
     )
     for note in notes:
         fig.add_annotation(note)
@@ -75,7 +78,11 @@ if partial is not None and s.weeks[partial].revenue > 0:
     revenue.append(
         go.Scatter(
             x=x,
-            y=[v if i in joined else None for i, v in enumerate(values)],
+            y=[
+                (min(v, top) if clipped else v) if i in joined else None
+                for i, v in enumerate(values)
+            ],
+            customdata=values,
             name="Partial week",
             showlegend=False,
             mode="lines+markers",
@@ -86,19 +93,19 @@ if partial is not None and s.weeks[partial].revenue > 0:
                 "color": MUTED,
                 "line": {"width": 2},
             },
-            hovertemplate="£%{y:,.0f} (partial)",
+            hovertemplate="£%{customdata:,.0f} (partial)",
             cliponaxis=False,
         )
     )
     notes.append(
         {
             "x": p.week_start,
-            "y": min(values[partial], top) if top else values[partial],
+            "y": top if clipped else values[partial],
             "text": f"Partial · {pct(100 * p.cancelled_value / p.revenue)} cancelled",
             "showarrow": True,
             "arrowcolor": MUTED,
             "ax": -40,
-            "ay": -36,
+            "ay": 36 if clipped else -36,
             "xanchor": "right",
             "font": {"color": MUTED, "size": 12},
         }
@@ -117,7 +124,13 @@ revenue.append(
 top_left, top_right = st.columns(2)
 bottom_left, bottom_right = st.columns(2)
 with top_left:
-    chart(f"{measure} revenue per week", revenue, True, notes, top or None)
+    chart(
+        f"{measure} revenue per week",
+        revenue,
+        True,
+        notes,
+        [bottom, top] if top > 0 else None,
+    )
 with top_right:
     chart(
         "Orders per week",
