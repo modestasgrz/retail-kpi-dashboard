@@ -1,4 +1,4 @@
-"""AC-10 — Given fixture F built, week 2011-09-19 has top_line "One line is 29.6% of revenue: MUG RED, £60 (invoice 500003)"; a week whose largest line is exactly 25.0% of revenue has no top_line flag."""
+"""AC-10 — Given fixture F built, week 2011-09-19 has top_line "One line is 29.6% of revenue: Mug Red, £60 (invoice 500003)"; a week whose largest line is exactly 25.0% of revenue has no top_line flag."""
 
 from datetime import date, datetime
 from pathlib import Path
@@ -9,7 +9,7 @@ from fixture import built, reasons, scenario, week_row
 def test_ac_10_top_line_flag(tmp_path: Path) -> None:
     assert (
         reasons(scenario(built(tmp_path / "a")).selected)["top_line"]
-        == "One line is 29.6% of revenue: MUG RED, £60 (invoice 500003)"
+        == "One line is 29.6% of revenue: Mug Red, £60 (invoice 500003)"
     )
     quarter = [
         (
