@@ -193,7 +193,7 @@ for col, (title, rows, name) in zip(st.columns(2), lists, strict=False):
                 hide_index=True,
                 width="stretch",
                 column_config={
-                    "Name": st.column_config.TextColumn(width=215),
+                    "Name": st.column_config.TextColumn(width=245),
                     "Revenue": st.column_config.Column(width=78),
                     "Share of week": st.column_config.ProgressColumn(
                         format="%.1f%%",
