@@ -40,6 +40,19 @@ NO_ARROW = 2
 END = LAST_WEEK + timedelta(days=6)
 
 
+PLAIN = {
+    "net_revenue": "What the week's sales brought in after cancellations.",
+    "orders": "How many separate orders customers placed.",
+    "net_aov": "What an order was worth on average, after cancellations.",
+    "revenue": "Sales before cancellations are taken off.",
+    "units": "How many items were sold.",
+    "customers": "How many different customers bought (only lines with a customer id count).",
+    "new_customers": "Customers buying from the shop for the first time.",
+    "returning_customers": "Customers who had bought before.",
+    "cancelled_value": "The value of items cancelled this week; lower is better.",
+}
+
+
 def app() -> AppTest:
     return AppTest.from_file(APP, default_timeout=60).run()
 
@@ -134,7 +147,10 @@ def expected_cards(s: Any) -> dict[str, tuple[str, str, str]]:
             "cancelled_value",
         ),
     }
-    return {k: (v, d, s.sources[key]) for k, (v, d, key) in rows.items()}
+    return {
+        k: (v, d, f"{PLAIN[key]}\n\n{s.sources[key]}")
+        for k, (v, d, key) in rows.items()
+    }
 
 
 def assert_cards(at: AppTest, s: Any) -> None:
@@ -591,7 +607,7 @@ def test_summary_hidden_for_country_and_shown_for_all() -> None:
     at.selectbox(key="week").select(date(2011, 9, 19)).run()
     assert not at.info
     at.selectbox(key="country").select("Bahrain").run()
-    assert any("covers all countries" in i.value for i in at.info)
+    assert any("covers all countries" in c.value for c in at.caption)
 
 
 def test_top_lists_on_overview_match_core() -> None:
@@ -619,24 +635,32 @@ def test_top_lists_on_overview_match_core() -> None:
 def test_theme_config_matches_tokens() -> None:
     cfg = tomllib.loads((REPO / ".streamlit" / "config.toml").read_text())["theme"]
     assert cfg["base"] == "dark"
-    assert cfg["backgroundColor"] == theme.BG == "#0B1426"
-    assert cfg["secondaryBackgroundColor"] == theme.SURFACE == "#13203A"
-    assert cfg["primaryColor"] == theme.BLUE == "#3B82F6"
-    assert cfg["textColor"] == theme.TEXT == "#E6ECF5"
+    assert cfg["backgroundColor"] == theme.BG == "#0A0A0B"
+    assert cfg["secondaryBackgroundColor"] == theme.SURFACE == "#111113"
+    assert cfg["primaryColor"] == theme.PRIMARY == "#EDEDEF"
+    assert theme.PRIMARY != theme.BLUE
+    assert cfg["textColor"] == theme.TEXT == "#EDEDEF"
+    assert cfg["greenColor"] == theme.GOOD == theme.GREEN
+    assert cfg["redColor"] == theme.BAD == theme.RED
+    assert cfg["font"] == theme.FONT
 
 
 def test_theme_other_tokens() -> None:
-    assert theme.BORDER == "#22324F"
-    assert theme.MUTED == "#8B9AB4"
+    assert theme.BORDER == "#26262A"
+    assert theme.MUTED == "#8A8A93"
+    assert theme.SLATE == "#9A9AA3"
     assert theme.GREEN == "#22C55E"
     assert theme.AMBER == "#F59E0B"
     assert theme.RED == "#EF4444"
-    assert theme.FONT == '"Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif'
+    assert theme.FONT == (
+        '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", '
+        '"Helvetica Neue", Arial, sans-serif'
+    )
 
 
 def test_plotly_template_registered_and_default() -> None:
-    assert pio.templates["navy"] == theme.TEMPLATE
-    assert pio.templates.default == "navy"
+    assert pio.templates["graphite_dark"] == theme.TEMPLATE
+    assert pio.templates.default == "graphite_dark"
 
 
 def test_plotly_template_separators_and_colours() -> None:
@@ -666,7 +690,7 @@ def test_css_loaded_once_and_exists() -> None:
     assert src.count("style.css") == 1
 
 
-def test_trend_figures_use_navy_template_and_four_charts() -> None:
+def test_trend_figures_use_graphite_template_and_four_charts() -> None:
     at = app()
     at.switch_page("views/trends.py").run()
     assert not at.exception
