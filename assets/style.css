@@ -4,23 +4,35 @@ html, body, p, li, label, input, button, h1, h2, h3, h4, h5, h6, td, th,
   font-variant-numeric: tabular-nums;
 }
 .block-container { padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1360px; }
-h1 { font-weight: 650; letter-spacing: -0.01em; }
+h1 { font-size: 1.75rem !important; font-weight: 650; letter-spacing: -0.01em; padding-bottom: 0.2rem !important; }
+[data-testid="stSidebar"] { border-right: 1px solid #22324F; }
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: #A3B1C8; }
+.st-key-meta [data-testid="stCaptionContainer"] p { font-size: 12px; white-space: nowrap; }
+.st-key-asof [data-testid="stCaptionContainer"], .st-key-pill [data-testid="stMarkdownContainer"] { text-align: right; }
+
+.st-key-headline { border-left: 4px solid #3B82F6 !important; background: #13203A; }
+.st-key-headline p { font-size: 1.3rem; font-weight: 600; line-height: 1.45; }
+
 [data-testid="stMetric"] {
   background: #13203A;
   border: 1px solid #22324F;
   border-radius: 10px;
   padding: 14px 16px;
 }
-[data-testid="stMetricLabel"] p,
-[data-testid="stMetricLabel"] div { color: #A3B1C8; font-size: 0.85rem; white-space: normal; overflow: visible; text-overflow: clip; }
-.st-key-big [data-testid="stMetric"] { min-height: 196px; }
+[data-testid="stMetricLabel"] p { color: #A3B1C8; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .st-key-big [data-testid="stMetricValue"] { font-size: 2.1rem; }
-.st-key-small [data-testid="stMetric"] { min-height: 148px; padding: 10px 10px; }
-.st-key-small [data-testid="stMetricValue"] { font-size: 1.1rem; }
-.st-key-small [data-testid="stMetricLabel"] { padding-right: 4px; }
-.st-key-small [data-testid="stMetricLabel"] p { font-size: 0.72rem; word-break: normal; overflow-wrap: normal; hyphens: none; }
-[data-testid="stSidebar"] { border-right: 1px solid #22324F; }
-[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: #A3B1C8; }
-.st-key-asof [data-testid="stCaptionContainer"], .st-key-pill [data-testid="stMarkdownContainer"] { text-align: right; }
-.st-key-small [data-testid="stMetricDelta"] { font-size: 0.72rem; }
+.st-key-big [data-testid="stCaptionContainer"] p { font-size: 0.8rem; margin-top: -0.35rem; }
+.st-key-small [data-testid="stMetric"] { padding: 10px 12px; height: 100%; }
+.st-key-small [data-testid="stMetricValue"] { font-size: 1.15rem; line-height: 1.3; }
+.st-key-small [data-testid="stMetricLabel"] p { font-size: 0.75rem; }
+.st-key-small [data-testid="stMetricDelta"] { font-size: 0.75rem; }
 .st-key-small [data-testid="stMetricDelta"] div { overflow: visible; text-overflow: clip; }
+@media (max-width: 1366px) {
+  .st-key-small [data-testid="stHorizontalBlock"] { flex-wrap: wrap; row-gap: 0.5rem; }
+  .st-key-small [data-testid="stColumn"] { flex: 1 1 calc(33.333% - 1rem) !important; min-width: calc(33.333% - 1rem) !important; }
+}
+
+.st-key-flags [data-testid="stVerticalBlockBorderWrapper"] { padding: 0.15rem 0.2rem; }
+.st-key-flags [data-testid="stVerticalBlockBorderWrapper"] p,
+.st-key-flags [data-testid="stVerticalBlockBorderWrapper"] li { margin-bottom: 0.1rem; font-size: 0.92rem; }
+.st-key-prose { max-width: 720px; }
