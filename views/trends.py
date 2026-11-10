@@ -24,7 +24,7 @@ elif sel in full_weeks:
         if rank % 100 in (11, 12, 13)
         else {1: "st", 2: "nd", 3: "rd"}.get(rank % 10, "th")
     )
-    now = f"Week {sel.week_start}: net revenue {money(sel.net_revenue)}, the {rank}{suffix} highest of {len(full_weeks)} full weeks in range."
+    now = f"Week {sel.week_start}: net revenue {money(sel.net_revenue)}, the {rank}{suffix} highest of {len(full_weeks)} full week{'s' if len(full_weeks) > 1 else ''} in range."
 else:
     high = max(full_weeks, key=lambda w: w.net_revenue)
     state = (

@@ -28,7 +28,7 @@ every = st.session_state.get("all_weeks", False) or len(s.weeks) <= 8
 weeks = s.weeks if every else s.weeks[-8:]
 strip(
     "What are the exact weekly numbers?",
-    f"Showing {'all' if every else 'the last 8'} of {len(s.weeks)} weeks, {weeks[0].week_start} – {weeks[-1].week_start + timedelta(days=6)}.",
+    f"Showing {'all' if every else 'the last 8'} of {len(s.weeks)} week{'s' if len(s.weeks) > 1 else ''}, {weeks[0].week_start} – {weeks[-1].week_start + timedelta(days=6)}.",
     "Switch on Show changes for week and year comparisons; Download CSV has every week.",
 )
 f = s.filters

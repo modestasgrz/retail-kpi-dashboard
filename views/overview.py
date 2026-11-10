@@ -98,7 +98,7 @@ small: list[tuple[str, str, float | None, str, Literal["normal", "inverse"]]] = 
 moves = [
     (label, wow, rounded(wow, "0.1"))
     for label, wow in [(b[0], b[4]) for b in big] + [(c[0], c[2]) for c in small]
-    if wow is not None
+    if wow is not None and label != "Cancelled"
 ]
 if w.product_lines == 0:
     now = "No sales this week."
