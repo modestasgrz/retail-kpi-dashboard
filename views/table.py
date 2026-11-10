@@ -19,6 +19,18 @@ SHORT = {
     "placed_cancelled": "Placed+cancelled",
 }
 
+WIDTH = {
+    "Net revenue": 84,
+    "Gross": 72,
+    "Orders": 54,
+    "Avg order (net)": 100,
+    "Units": 66,
+    "Customers": 74,
+    "New": 48,
+    "Returning": 74,
+    "Cancelled": 78,
+}
+
 s = header("Weekly table")
 f = s.filters
 controls = st.columns([1, 1, 2], vertical_alignment="center")
@@ -77,9 +89,10 @@ st.dataframe(
     width="stretch",
     height=min(560, 38 + 35 * len(table)),
     column_config={
-        "Week": st.column_config.TextColumn(pinned=True, width=92),
+        **{name: st.column_config.Column(width=WIDTH.get(name, 92)) for name in shown},
+        "Week": st.column_config.TextColumn(pinned=True, width=80),
         "Flags": st.column_config.TextColumn(
-            width=130,
+            width=166,
             help="Short labels; full reasons on Flagged weeks. Revenue / Orders = swing vs the 4-week average, Cancels = large cancellations, Big line = one big order, Placed+cancelled = an order cancelled the same week, Partial = partial week.",
         ),
     },

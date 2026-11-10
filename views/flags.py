@@ -4,7 +4,7 @@ from datetime import timedelta
 import streamlit as st
 
 from kpi.models import FLAG_LABELS
-from views.ui import driver_lines, header
+from views.ui import flag_line, header
 
 GRAY = {"no_data", "partial_week"}
 
@@ -32,9 +32,5 @@ else:
                     )
                 )
                 st.markdown(
-                    "\n".join(
-                        f"- **{FLAG_LABELS[f.rule]}:** {f.reason}"
-                        + "".join(f"\n    - {line}" for line in driver_lines(f))
-                        for f in w.flags
-                    )
+                    "\n".join(flag_line(f, "- **{label}:** {reason}") for f in w.flags)
                 )

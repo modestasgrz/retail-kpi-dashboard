@@ -7,8 +7,8 @@ import pandas as pd
 import streamlit as st
 
 from kpi.fmt import change, count, money, money2
-from kpi.models import ALL, FLAG_LABELS
-from views.ui import driver_lines, header
+from kpi.models import ALL
+from views.ui import flag_line, header
 
 LABEL = "Weekly summary written by AI in an earlier run; every figure was checked against the computed numbers. This app makes no AI calls."
 AI = "AI-written summary, saved; numbers above are computed"
@@ -33,11 +33,7 @@ with pill.container(key="pill"):
 if n:
     with st.expander("Flag details"):
         st.markdown(
-            "\n".join(
-                f"- **{FLAG_LABELS[f.rule]}** · {f.reason}"
-                + "".join(f"\n    - {line}" for line in driver_lines(f))
-                for f in w.flags
-            )
+            "\n".join(flag_line(f, "- **{label}** · {reason}") for f in w.flags)
         )
 
 recent = [x for x in s.weeks if x.week_start <= w.week_start][-12:]
@@ -178,13 +174,13 @@ for col, title, rows, name in (
                 hide_index=True,
                 width="stretch",
                 column_config={
-                    "Name": st.column_config.TextColumn(width=280),
-                    "Revenue": st.column_config.Column(width=80),
+                    "Name": st.column_config.TextColumn(width=215),
+                    "Revenue": st.column_config.Column(width=78),
                     "Share of week": st.column_config.ProgressColumn(
                         format="%.1f%%",
                         min_value=0,
                         max_value=max(shares),
-                        width=110,
+                        width=95,
                         help="Share of the week's gross revenue; the longest bar is the largest share.",
                     ),
                 },

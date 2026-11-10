@@ -3,7 +3,7 @@ from datetime import timedelta
 import streamlit as st
 
 from kpi.fmt import count, grouped, money, pct, rounded
-from kpi.models import Flag, Scenario
+from kpi.models import FLAG_LABELS, Flag, Scenario
 
 PLURAL = {"product": "products", "country": "countries"}
 
@@ -21,6 +21,17 @@ def header(title: str) -> Scenario:
         with right.container(key="asof"):
             st.caption(f":green[●] Data as of {s.data_end}")
     return s
+
+
+def flag_line(flag: Flag, template: str) -> str:
+    """One markdown list item: `template` with {label} and {reason}, or just "- reason" when the reason already starts with its label (Placed and cancelled); then the driver lines, nested."""
+    label = FLAG_LABELS[flag.rule]
+    head = (
+        f"- {flag.reason}"
+        if flag.reason.startswith(f"{label}:")
+        else template.format(label=label, reason=flag.reason)
+    )
+    return head + "".join(f"\n    - {line}" for line in driver_lines(flag))
 
 
 def driver_lines(flag: Flag) -> list[str]:
