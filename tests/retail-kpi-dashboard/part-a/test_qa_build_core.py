@@ -4,7 +4,6 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from pathlib import Path
-from string import capwords
 from typing import Any
 
 import pandas as pd
@@ -934,7 +933,7 @@ def test_very_long_description_and_unicode_country(tmp_path: Path) -> None:
     s = scen(out, country="Côte d'Ivoire")
     assert s.top_products[0].label == long
     flag = next(f for f in s.selected.flags if f.rule == "top_line")
-    assert capwords(long) in flag.reason
+    assert "X" + "x" * 9_999 in flag.reason
 
 
 def test_sources_have_ten_nonempty_entries_for_zero_week(tmp_path: Path) -> None:
