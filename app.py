@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from kpi.core import countries, run_scenario
 from kpi.models import ALL, FIRST_WEEK, LAST_WEEK, MAX_DATE, OUTSIDE_UK, UK, Filters
+from kpi.theme import CSS_VARS
 
 PRESETS = {
     "Full year": (FIRST_WEEK, LAST_WEEK, ALL),
@@ -39,8 +40,9 @@ def reset() -> None:
 st.set_page_config(
     page_title="Retail KPI dashboard", page_icon=":material/monitoring:", layout="wide"
 )
+root = "".join(f"--{name}: {value};" for name, value in CSS_VARS.items())
 st.html(
-    f"<style>{(Path(__file__).parent / 'assets' / 'style.css').read_text()}</style>"
+    f"<style>:root {{{root}}}\n{(Path(__file__).parent / 'assets' / 'style.css').read_text()}</style>"
 )
 st.logo(str(Path(__file__).parent / "assets" / "logo.svg"), size="large")
 if "preset" not in st.session_state:

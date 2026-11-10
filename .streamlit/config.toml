@@ -1,11 +1,12 @@
 [theme]
 base = "dark"
-primaryColor = "#3B82F6"
-backgroundColor = "#0B1426"
-secondaryBackgroundColor = "#13203A"
-textColor = "#E6ECF5"
-greenColor = "#34D399"
-redColor = "#F87171"
+primaryColor = "#EDEDEF"
+backgroundColor = "#0A0A0B"
+secondaryBackgroundColor = "#111113"
+textColor = "#EDEDEF"
+greenColor = "#22C55E"
+redColor = "#EF4444"
+font = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif'
 
 [browser]
 gatherUsageStats = false

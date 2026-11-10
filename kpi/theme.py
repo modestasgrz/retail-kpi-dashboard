@@ -1,21 +1,35 @@
 import plotly.graph_objects as go
 import plotly.io as pio
 
-BG = "#0B1426"
-SURFACE = "#13203A"
-BORDER = "#22324F"
-TEXT = "#E6ECF5"
-MUTED = "#8B9AB4"
+BG = "#0A0A0B"
+SURFACE = "#111113"
+SURFACE_2 = "#1C1C1F"
+BORDER = "#26262A"
+TEXT = "#EDEDEF"
+MUTED = "#8A8A93"
+PRIMARY = "#EDEDEF"
 BLUE = "#3B82F6"
 GREEN = "#22C55E"
 AMBER = "#F59E0B"
 RED = "#EF4444"
-GOOD = "#34D399"
-BAD = "#F87171"
-FONT = '"Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif'
-RETURNING = MUTED
+SLATE = "#9A9AA3"
+GOOD = GREEN
+BAD = RED
+FONT = '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif'
+RADIUS = "6px"
 NEW = BLUE
+RETURNING = SLATE
 SERIES = [BLUE, RETURNING]
+CSS_VARS = {
+    "surface": SURFACE,
+    "surface-2": SURFACE_2,
+    "border": BORDER,
+    "text": TEXT,
+    "muted": MUTED,
+    "font": FONT,
+    "radius": RADIUS,
+    "card-fill": "transparent",
+}
 
 axis = {
     "showgrid": True,
@@ -35,11 +49,12 @@ TEMPLATE = go.layout.Template(
         "yaxis": axis,
         "hovermode": "x unified",
         "hoverlabel": {
-            "bgcolor": BG,
+            "bgcolor": SURFACE_2,
             "bordercolor": BORDER,
             "font": {"color": TEXT, "family": FONT},
         },
         "legend": {
+            "bgcolor": "rgba(0,0,0,0)",
             "orientation": "h",
             "y": 1.02,
             "yanchor": "bottom",
@@ -51,8 +66,8 @@ TEMPLATE = go.layout.Template(
         "title": {"font": {"size": 15, "color": TEXT}, "x": 0, "xanchor": "left"},
         "bargap": 0.15,
         "barmode": "stack",
-        "separators": ".\u202f",
+        "separators": ". ",
     }
 )
-pio.templates["navy"] = TEMPLATE
-pio.templates.default = "navy"
+pio.templates["graphite_dark"] = TEMPLATE
+pio.templates.default = "graphite_dark"

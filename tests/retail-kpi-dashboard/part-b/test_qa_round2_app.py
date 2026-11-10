@@ -364,7 +364,9 @@ def test_uk_only_partial_trace_and_annotation() -> None:
     assert tr["line"]["dash"] == "dot"
     assert tr["line"]["color"] == tr["marker"]["color"] == theme.MUTED
     assert tr["showlegend"] is False
-    texts = [a["text"] for a in rev["layout"]["annotations"]]
+    texts = [
+        a["text"] for a in rev["layout"]["annotations"] if a["text"] != "Selected week"
+    ]
     expected = f"Partial · {pct(100 * p.cancelled_value / p.revenue)} cancelled"
     assert texts == [expected]
 
@@ -476,9 +478,11 @@ def test_flag_summary_caption_counts() -> None:
     s = scen()
     rules = [f.rule for f in s.flags]
     expected = " · ".join(
-        f"{FLAG_LABELS[r]}: {rules.count(r)}" for r in dict.fromkeys(rules)
+        f"{FLAG_LABELS[r]} {rules.count(r)}" for r in dict.fromkeys(rules)
     )
-    assert expected in captions(at)
+    line = f"{s.totals.flagged_weeks} of {s.totals.weeks} weeks flagged: {expected}."
+    assert any(line in m for m in markdowns(at))
+    assert not [c for c in captions(at) if expected in c]
 
 
 # ---------- Weekly table ----------
@@ -560,10 +564,15 @@ def test_top_lists_names_and_share(country: str, week: date) -> None:
     s = scen(country, week)
     frames = [d.value for d in at.dataframe]
     prods, ctrs = (frames + [None, None])[:2]
+    both = country in (ALL, OUTSIDE_UK)
+    if not both:
+        assert ctrs is None
     for df, rows, name in (
         (prods, s.top_products, capwords),
         (ctrs, s.top_countries, str),
     ):
+        if rows is s.top_countries and not both:
+            continue
         if not rows:
             assert df is None or len(df) == 0
             continue

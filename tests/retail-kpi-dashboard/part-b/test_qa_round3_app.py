@@ -39,7 +39,9 @@ VIEWS = {
     "methodology": "views/methodology.py",
 }
 YOY = "vs same week last year"
-NO_BASE = "No comparable week a year earlier: "
+LEAD_NO = "There is no fair comparison with last year for this week: "
+LEAD_YES = "How this week compares with the same week a year ago. "
+NO_BASE = LEAD_NO
 AI_LABEL = "AI-written summary, saved; numbers above are computed"
 AI_HEADLINE = (
     "Revenue and orders jump to an unusually strong week, led by pantry products"
@@ -189,8 +191,9 @@ def test_yoy_dash_when_base_week_has_no_sales() -> None:
         help_ = cap.proto.help
         assert help_.startswith(NO_BASE)
         assert f"{base} – {sunday(base)}" in help_
-        assert "partial" not in help_
-        assert "this week" not in help_
+        rest = help_.removeprefix(LEAD_NO)
+        assert "partial" not in rest
+        assert "this week" not in rest
 
 
 @pytest.mark.parametrize(
@@ -225,7 +228,7 @@ def test_yoy_caption_and_base_value_in_help(country: str, week: date) -> None:
         assert cap.value == f"{change(yoy)} {YOY}"
         assert (
             cap.proto.help
-            == f"Same week a year earlier: {base} – {sunday(base)}, {base_text}."
+            == f"{LEAD_YES}Same week a year earlier: {base} – {sunday(base)}, {base_text}."
         )
 
 
@@ -318,7 +321,11 @@ def test_partial_annotation_uses_gross_share_for_both_measures() -> None:
     at = open_app(ALL, None, None, "trends")
     for measure in ("Net", "Gross"):
         set_measure(at, measure)
-        texts = [a["text"] for a in revenue_chart(at)["layout"]["annotations"]]
+        texts = [
+            a["text"]
+            for a in revenue_chart(at)["layout"]["annotations"]
+            if a["text"] != "Selected week"
+        ]
         assert texts == [want]
 
 
@@ -361,6 +368,8 @@ def test_revenue_y_range_excludes_partial_week(
     if partial is not None:
         assert all(y <= rng[1] + 1e-6 for y in partial["y"] if y is not None)
     for a in rev["layout"].get("annotations", []):
+        if a["text"] == "Selected week":
+            continue
         assert a["y"] <= rng[1] + 1e-6
 
 
@@ -392,7 +401,9 @@ def test_one_week_range_axis_scales_to_that_week(measure: str) -> None:
     assert rev["layout"]["yaxis"]["range"][1] == pytest.approx(1.08 * value)
     assert rev["data"][0]["y"] == [pytest.approx(value)]
     assert "Partial week" not in [t.get("name") for t in rev["data"]]
-    assert rev["layout"].get("annotations", []) == []
+    assert [
+        a for a in rev["layout"].get("annotations", []) if a["text"] != "Selected week"
+    ] == []
 
 
 def test_all_empty_country_weeks_have_no_axis_and_no_exception() -> None:
@@ -414,7 +425,9 @@ def test_partial_week_without_sales_draws_no_partial_trace() -> None:
     at = open_app("Switzerland", None, None, "trends")
     rev = revenue_chart(at)
     assert "Partial week" not in [t.get("name") for t in rev["data"]]
-    assert not rev["layout"].get("annotations")
+    assert [
+        a for a in rev["layout"].get("annotations", []) if a["text"] != "Selected week"
+    ] == []
     assert y_at(rev["data"][0], LAST_WEEK) is None
 
 
@@ -811,7 +824,7 @@ def test_partial_value_above_top_is_clamped_with_true_value_in_customdata(
     assert y_at(tr, LAST_WEEK) == pytest.approx(top)
     assert y_at({"x": tr["x"], "y": tr["customdata"]}, LAST_WEEK) == pytest.approx(true)
     assert "customdata" in tr["hovertemplate"]
-    (note,) = rev["layout"]["annotations"]
+    (note,) = [a for a in rev["layout"]["annotations"] if a["text"] != "Selected week"]
     assert note["ay"] == 36
     assert note["y"] == pytest.approx(top)
 
@@ -829,7 +842,7 @@ def test_partial_value_within_top_is_not_clamped(country: str, measure: str) -> 
     rev = revenue_chart(at)
     tr = next(t for t in rev["data"] if t.get("name") == "Partial week")
     assert y_at(tr, LAST_WEEK) == pytest.approx(true)
-    (note,) = rev["layout"]["annotations"]
+    (note,) = [a for a in rev["layout"]["annotations"] if a["text"] != "Selected week"]
     assert note["ay"] == -36
     assert note["y"] == pytest.approx(true)
 
@@ -860,12 +873,12 @@ def test_yoy_dash_for_non_positive_base_names_the_base_week(
 def test_theme_returning_is_muted_and_new_is_blue() -> None:
     from kpi import theme
 
-    assert theme.RETURNING == theme.MUTED
+    assert theme.RETURNING == theme.SLATE == "#9A9AA3"
     assert theme.NEW == theme.BLUE
     at = open_app(ALL, None, None, "trends")
     bars = charts(at)[2]["data"]
     assert {t["name"]: t["marker"]["color"] for t in bars} == {
-        "Returning": theme.MUTED,
+        "Returning": theme.SLATE,
         "New": theme.BLUE,
     }
 
@@ -951,10 +964,11 @@ def test_ai_summary_hidden_for_country_filters(country: str) -> None:
     at = open_app(country, None, date(2011, 9, 19))
     assert not ai_boxes(at)
     assert any(
-        i.value
+        str(i.value)
         == "The saved weekly summary covers all countries, so it is hidden while a country filter is on."
-        for i in at.info
+        for i in at.main.caption
     )
+    assert not at.info
     assert not [m for m in markdowns(at) if AI_HEADLINE in m]
     assert not [c for c in at.main.caption if "Weekly summary written" in str(c.value)]
 
@@ -1019,7 +1033,7 @@ def test_same_net_revenue_on_card_headline_trends_and_table(
     w = s.selected
     at = open_app(country, None, week)
     assert metric(at, "Net revenue").value == money(w.net_revenue)
-    assert s.headline in markdowns(at)
+    assert any(s.headline in m for m in markdowns(at))
     if w.product_lines > 0:
         assert f"Net revenue {money(w.net_revenue)}" in s.headline
     assert f"net revenue {money(s.totals.net_revenue)} " in " ".join(

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from html import escape
 
 import streamlit as st
 
@@ -21,6 +22,18 @@ def header(title: str) -> Scenario:
         with right.container(key="asof"):
             st.caption(f":green[●] Data as of {s.data_end}")
     return s
+
+
+def strip(question: str, now: str, do: str) -> None:
+    """The 3-line reading strip under the range line (DEC-30): THE QUESTION, RIGHT NOW, DO THIS."""
+    st.markdown(
+        '<div class="how-to-read">'
+        f"<div><b>THE QUESTION</b><span>{escape(question)}</span></div>"
+        f'<div><b>RIGHT NOW</b><span class="now">{escape(now)}</span></div>'
+        f"<div><b>DO THIS</b><span>{escape(do)}</span></div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def flag_line(flag: Flag, template: str) -> str:
