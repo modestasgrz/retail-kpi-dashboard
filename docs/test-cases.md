@@ -56,10 +56,10 @@ Products: LAMP 50 + 25 = 75, MUG BLUE 40 + 20 + 8 = 68, MUG RED 60. Countries: U
 | Week | Rule | Working | Reason |
 | --- | --- | --- | --- |
 | W0 | no_data | 0 product lines | No sales lines this week |
-| W1 | top_line | largest line 40 / 80 = 50.0% > 25% | One line is 50.0% of revenue: MUG RED, £40 (invoice 500002) |
+| W1 | top_line | largest line 40 / 80 = 50.0% > 25% | One line is 50.0% of revenue: Mug Red, £40 (invoice 500002) |
 | W2 | revenue_swing | 4-week average = £80 (W1 is the only one of the 4 previous weeks with sales); +153.8% ≥ 40 | Revenue +153.8% vs 4-week average (£203 vs £80) |
 | W2 | orders_swing | 4-week average = 2 orders; +150.0% ≥ 40 | Orders +150.0% vs 4-week average (5 vs 2.0) |
-| W2 | top_line | 60 / 203 = 29.56% > 25% | One line is 29.6% of revenue: MUG RED, £60 (invoice 500003) |
+| W2 | top_line | 60 / 203 = 29.56% > 25% | One line is 29.6% of revenue: Mug Red, £60 (invoice 500003) |
 | W2 | (no large_cancellations) | 25 / 203 = 12.3% < 25% | |
 | W2 | (no partial_week) | data ends Sunday 2011-09-25, the last day of W2 | |
 

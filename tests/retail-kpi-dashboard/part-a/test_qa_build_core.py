@@ -530,7 +530,7 @@ def test_top_line_tie_picks_earliest_line(tmp_path: Path) -> None:
     flag = next(
         f for f in scen(built(tmp_path, rows)).selected.flags if f.rule == "top_line"
     )
-    assert flag.reason == "One line is 50.0% of revenue: EARLY, £50 (invoice 8)"
+    assert flag.reason == "One line is 50.0% of revenue: Early, £50 (invoice 8)"
 
 
 def test_top_line_exactly_25_percent_is_not_flagged(tmp_path: Path) -> None:
@@ -565,7 +565,7 @@ def test_top_line_single_line_week_and_unicode_description(tmp_path: Path) -> No
     flags = {f.rule: f.reason for f in scen(built(tmp_path, rows)).selected.flags}
     assert (
         flags["top_line"]
-        == f"One line is 100.0% of revenue: CAFÉ MUG ☕, BLUE, £2{N}469 (invoice 123456)"
+        == f"One line is 100.0% of revenue: Café Mug ☕, Blue, £2{N}469 (invoice 123456)"
     )
 
 
@@ -933,7 +933,7 @@ def test_very_long_description_and_unicode_country(tmp_path: Path) -> None:
     s = scen(out, country="Côte d'Ivoire")
     assert s.top_products[0].label == long
     flag = next(f for f in s.selected.flags if f.rule == "top_line")
-    assert long in flag.reason
+    assert "X" + "x" * 9_999 in flag.reason
 
 
 def test_sources_have_ten_nonempty_entries_for_zero_week(tmp_path: Path) -> None:
