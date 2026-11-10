@@ -7,7 +7,7 @@ import streamlit as st
 
 from kpi.core import weekly_csv
 from kpi.fmt import change, count, money, rounded
-from kpi.theme import BAD, GOOD
+from kpi.theme import BAD, GOOD, SURFACE_2, TEXT
 from views.ui import header, strip
 
 SHORT = {
@@ -21,28 +21,28 @@ SHORT = {
 }
 
 WIDTH = {
-    "Net revenue": 84,
-    "Gross": 72,
-    "Orders": 54,
-    "Avg order (net)": 100,
-    "Units": 66,
-    "Customers": 74,
-    "New": 48,
-    "Returning": 74,
-    "Cancelled": 78,
+    "Net revenue": 100,
+    "Gross": 76,
+    "Orders": 58,
+    "Avg order (net)": 118,
+    "Units": 70,
+    "Customers": 86,
+    "New": 46,
+    "Returning": 84,
+    "Cancelled": 82,
 }
 
 s = header("Weekly table")
 every = st.session_state.get("all_weeks", False) or len(s.weeks) <= 8
-listed = s.weeks if every else s.weeks[-8:]
+weeks = s.weeks if every else s.weeks[-8:]
 strip(
     "What are the exact weekly numbers?",
-    f"Showing {'all' if every else 'the last 8'} of {len(s.weeks)} weeks, {listed[0].week_start} – {listed[-1].week_start + timedelta(days=6)}.",
+    f"Showing {'all' if every else 'the last 8'} of {len(s.weeks)} weeks, {weeks[0].week_start} – {weeks[-1].week_start + timedelta(days=6)}.",
     "Switch on Show changes for week and year comparisons; Download CSV has every week.",
 )
 f = s.filters
 controls = st.columns([1, 1, 2], vertical_alignment="center")
-all_weeks = controls[0].toggle("All weeks", key="all_weeks")
+controls[0].toggle("All weeks", key="all_weeks")
 changes = controls[1].toggle("Show changes", key="changes")
 controls[2].download_button(
     "Download CSV",
@@ -50,9 +50,8 @@ controls[2].download_button(
     file_name=f"weekly-kpis_{f.start}_{f.end}_{f.country.lower().replace(' ', '-')}.csv",
     mime="text/csv",
     icon=":material/download:",
-    help="Download every week in the range for a spreadsheet. Raw numbers (2 decimals, no thousands separators) for spreadsheets.",
+    help="Download every week in the range for a spreadsheet. Raw numbers with 2 decimals and no thousands separators, whatever the table shows.",
 )
-weeks = s.weeks if all_weeks else s.weeks[-8:]
 columns: dict[str, tuple[str, Callable[..., str]]] = {
     "Net revenue": ("net_revenue", money),
     "Net vs last week": ("net_revenue_wow", change),
@@ -86,7 +85,13 @@ def tone(value: object) -> str:
     return f"color: {GOOD if shown > 0 else BAD}" if shown else ""
 
 
-styled = table.style.format(
+def selected(row: pd.Series) -> list[str]:
+    """A light tint on the selected week's row."""
+    tint = f"background-color: {SURFACE_2}" if row["Week"] == str(f.week) else ""
+    return [f"{tint}; color: {TEXT}" if name == "Week" else tint for name in row.index]
+
+
+styled = table.style.apply(selected, axis=1).format(
     {name: cast(Callable[[object], str], fmt) for name, (_, fmt) in shown.items()},
     na_rep="n/a",
 )
@@ -98,9 +103,9 @@ st.dataframe(
     height=min(560, 38 + 35 * len(table)),
     column_config={
         **{name: st.column_config.Column(width=WIDTH.get(name, 92)) for name in shown},
-        "Week": st.column_config.TextColumn(pinned=True, width=80),
+        "Week": st.column_config.TextColumn(pinned=True, width=96),
         "Flags": st.column_config.TextColumn(
-            width=166,
+            width=110,
             help="What was flagged that week, in short; full reasons are on Flagged weeks. Revenue / Orders = swing vs the 4-week average, Cancels = large cancellations, Big line = one big order, Placed+cancelled = an order cancelled the same week, Partial = partial week.",
         ),
     },

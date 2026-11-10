@@ -21,17 +21,11 @@ NEW = BLUE
 RETURNING = SLATE
 SERIES = [BLUE, RETURNING]
 CSS_VARS = {
-    "bg": BG,
     "surface": SURFACE,
     "surface-2": SURFACE_2,
     "border": BORDER,
     "text": TEXT,
     "muted": MUTED,
-    "blue": BLUE,
-    "green": GREEN,
-    "amber": AMBER,
-    "red": RED,
-    "slate": SLATE,
     "font": FONT,
     "radius": RADIUS,
     "card-fill": "transparent",
@@ -41,7 +35,6 @@ axis = {
     "showgrid": True,
     "gridcolor": BORDER,
     "linecolor": BORDER,
-    "zerolinecolor": BORDER,
     "zeroline": False,
     "tickfont": {"color": MUTED, "size": 12},
     "title": {"font": {"color": MUTED, "size": 12}},

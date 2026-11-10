@@ -1,6 +1,6 @@
 /* Graphite base (shared with P6, from streamlit-batch/theme-graphite/style.css); variables are injected from kpi/theme.py.
    Not taken: the shared rule that greys metric deltas (P5 colours changes by meaning, DEC-29). */
-html, body, [class*="css"], p, li, label, input, button, h1, h2, h3, h4, h5, h6, td, th,
+html, body, p, li, label, input, button, h1, h2, h3, h4, h5, h6, td, th,
 [data-testid="stMarkdownContainer"], .stMarkdown, .stCaption { font-family: var(--font); }
 [data-testid="stSidebar"] { background: var(--surface); border-right: 1px solid var(--border); }
 [data-testid="stSidebarNavLink"][aria-current="page"] { background: var(--surface-2) !important; }
@@ -21,25 +21,25 @@ h1 { font-size: 1.75rem !important; font-weight: 650; letter-spacing: -0.01em; p
 [data-testid="stVerticalBlockBorderWrapper"] { border-radius: var(--radius) !important; border-color: var(--border) !important; }
 
 /* Reading strip (DEC-30): label column + text, no box. */
-.how-to-read { display: grid; gap: 3px; margin: 2px 0 6px; color: var(--muted); font-size: 0.9rem; }
+.how-to-read { display: grid; gap: 3px; margin: 2px 0 24px; padding-bottom: 12px; border-bottom: 1px solid var(--border); line-height: 1.5; color: var(--muted); font-size: 0.9rem; }
 .how-to-read > div { display: grid; grid-template-columns: 110px 1fr; }
-.how-to-read b { color: var(--text); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.06em; padding-top: 2px; }
+.how-to-read b { color: var(--text); font-weight: 600; text-transform: uppercase; font-size: 0.72rem; letter-spacing: 0.06em; line-height: 1.5rem; }
 .how-to-read .now { color: var(--text); }
 
 /* P5 layout. */
-.block-container { padding: 2.2rem 2rem 3rem; max-width: 1360px; }
-td, [data-testid="stMetricValue"], .how-to-read { font-feature-settings: "tnum"; }
+.block-container { padding: 2.2rem 1.5rem 3rem; max-width: 1360px; }
+td, .how-to-read { font-feature-settings: "tnum"; }
 [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: var(--muted); }
 .st-key-meta [data-testid="stCaptionContainer"] p { font-size: 12px; white-space: nowrap; }
 .st-key-asof [data-testid="stCaptionContainer"], .st-key-pill [data-testid="stMarkdownContainer"] { text-align: right; }
 .st-key-big [data-testid="stMetricValue"] { font-size: 2rem; }
-.st-key-big [data-testid="stCaptionContainer"] p { font-size: 0.8rem; margin-top: -0.35rem; }
+.st-key-big [data-testid="stCaptionContainer"] p { font-size: 0.8rem; margin: -0.5rem 0 0.6rem 2px; }
 .st-key-small [data-testid="stMetric"] { padding: 10px 12px; height: 100%; }
 .st-key-small [data-testid="stMetricValue"] { font-size: 1.15rem; line-height: 1.3; }
 .st-key-small [data-testid="stMetricLabel"] p { font-size: 11px !important; }
 .st-key-small [data-testid="stMetricDelta"] { font-size: 0.75rem; }
 .st-key-small [data-testid="stMetricDelta"] div { overflow: visible; text-overflow: clip; }
-@media (max-width: 1366px) {
+@media (max-width: 1600px) {
   .st-key-small [data-testid="stHorizontalBlock"] { flex-wrap: wrap; row-gap: 0.5rem; }
   .st-key-small [data-testid="stColumn"] { flex: 1 1 calc(33.333% - 1rem) !important; min-width: calc(33.333% - 1rem) !important; }
 }
@@ -47,3 +47,4 @@ td, [data-testid="stMetricValue"], .how-to-read { font-feature-settings: "tnum";
 .st-key-flags [data-testid="stVerticalBlockBorderWrapper"] p,
 .st-key-flags [data-testid="stVerticalBlockBorderWrapper"] li { margin-bottom: 0.1rem; font-size: 0.92rem; }
 .st-key-prose { max-width: 720px; }
+h3 { font-size: 1.125rem !important; font-weight: 600 !important; }

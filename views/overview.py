@@ -7,7 +7,7 @@ import pandas as pd
 import streamlit as st
 
 from kpi.fmt import change, count, money, money2
-from kpi.models import ALL, FLAG_LABELS
+from kpi.models import ALL, FLAG_LABELS, OUTSIDE_UK
 from views.ui import flag_line, header, strip
 
 LABEL = "Weekly summary written by AI in an earlier run; every figure was checked against the computed numbers. This app makes no AI calls."
@@ -123,7 +123,7 @@ with st.container(key="big"):
             )
             col.caption(
                 "— vs same week last year",
-                help=f"There is no fair comparison with last year for this week. No comparable week a year earlier: {why}.",
+                help=f"There is no fair comparison with last year for this week: {why}.",
             )
         else:
             col.caption(
@@ -172,11 +172,12 @@ with st.container(key="small"):
             help=f"{PLAIN[k]}\n\n{s.sources[k]}",
         )
 
-left, right = st.columns(2)
-for col, title, rows, name in (
-    (left, "Top 5 products", s.top_products, capwords),
-    (right, "Top 5 countries", s.top_countries, str),
-):
+lists = [("Top 5 products", s.top_products, capwords)] + (
+    [("Top 5 countries", s.top_countries, str)]
+    if s.filters.country in (ALL, OUTSIDE_UK)
+    else []
+)
+for col, (title, rows, name) in zip(st.columns(2), lists, strict=False):
     with col:
         st.subheader(title)
         if rows:
@@ -207,7 +208,7 @@ for col, title, rows, name in (
             st.caption("No sales this week.")
 
 if s.filters.country != ALL:
-    st.info(
+    st.caption(
         "The saved weekly summary covers all countries, so it is hidden while a country filter is on."
     )
 elif s.summary is None:

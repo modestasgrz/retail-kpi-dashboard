@@ -4,7 +4,7 @@ from plotly.basedatatypes import BaseTraceType
 
 from kpi.fmt import money, pct
 from kpi.models import FLAG_LABELS
-from kpi.theme import AMBER, BLUE, MUTED, NEW, RETURNING
+from kpi.theme import AMBER, BLUE, MUTED, NEW, RETURNING, TEXT
 from views.ui import header, strip
 
 s = header("Trends")
@@ -13,6 +13,7 @@ full_weeks = [
     for w in s.weeks
     if w.product_lines > 0 and not any(f.rule == "partial_week" for f in w.flags)
 ]
+full = [w in full_weeks for w in s.weeks]
 if full_weeks:
     high = max(full_weeks, key=lambda w: w.net_revenue)
     low = min(full_weeks, key=lambda w: w.net_revenue)
@@ -30,7 +31,7 @@ measure = (
         ["Net", "Gross"],
         key="measure",
         default="Net",
-        help="Choose which revenue to plot: after or before cancellations. Net = revenue minus cancelled value (the headline figure); gross = before cancellations. Gaps are weeks with no sales; the grey open circle is the partial last week and does not stretch the axis; the dotted vertical line marks the selected week; amber diamonds mark flagged weeks.",
+        help="Choose which revenue to plot: after or before cancellations. Net = revenue minus cancelled value (the headline figure); gross = before cancellations. Gaps are weeks with no sales; the grey open circle is the partial last week and does not stretch the axis; the solid vertical line marks the selected week; amber diamonds mark flagged weeks.",
     )
     or "Net"
 )
@@ -46,7 +47,6 @@ partial = next(
     ),
     None,
 )
-full = [ok and i != partial for i, ok in enumerate(sold)]
 marked = [bool(w.flags) and ok for w, ok in zip(s.weeks, full, strict=True)]
 shown_full = [v for v, ok in zip(values, full, strict=True) if ok]
 top = 1.08 * max(shown_full, default=0.0)
@@ -63,7 +63,16 @@ def chart(
 ) -> None:
     st.markdown(f"**{title}**")
     fig = go.Figure(traces)
-    fig.add_vline(x=s.filters.week, line={"color": MUTED, "width": 1, "dash": "dot"})
+    fig.add_vline(x=s.filters.week, line={"color": TEXT, "width": 1}, opacity=0.5)
+    fig.add_annotation(
+        x=s.filters.week,
+        y=1,
+        yref="paper",
+        yanchor="bottom",
+        text="Selected week",
+        showarrow=False,
+        font={"color": MUTED, "size": 11},
+    )
     fig.update_layout(
         height=330,
         yaxis={"rangemode": "tozero"}

@@ -21,6 +21,10 @@ strip(
     if s.flags
     else "Widen the date range or pick another country in the sidebar.",
 )
+st.caption(
+    "A flag asks for a look; it is not an error in the data.",
+    help="Why weeks get flagged and how to read them. The rules and thresholds are on Methodology & data.",
+)
 if not s.flags:
     st.success(
         "No flagged weeks in the selected range.", icon=":material/check_circle:"
