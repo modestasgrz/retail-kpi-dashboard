@@ -10,7 +10,7 @@ from kpi.data import BUCKETS, PRODUCT_CODE, clean, read
 from kpi.download import FILE_NAME, download
 from kpi.models import ALL, FIRST_WEEK, LAST_WEEK, OUTSIDE_UK, UK
 
-WEEKS = pd.date_range(FIRST_WEEK - timedelta(days=7), LAST_WEEK, freq="7D")
+WEEKS = pd.date_range(FIRST_WEEK - timedelta(days=28), LAST_WEEK, freq="7D")
 DQ_COLUMNS = [f"{b}_lines" for b in BUCKETS]
 
 
