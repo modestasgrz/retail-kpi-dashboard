@@ -1,4 +1,4 @@
-"""AC-38 — Given the app on defaults with week 2011-09-19, then the Overview shows a markdown equal to the computed headline "Net revenue £319 746, +43.9% vs last week, +35.6% vs same week last year; 1 flag." (DEC-26), no markdown equal to the saved AI headline outside the expander, and one expander labelled "AI-written summary, saved; numbers above are computed" containing the DEC-14 label, the AI headline "Revenue and orders jump to an unusually strong week, led by pantry products" and the summary text with no `"` character; on preset "UK only" there is no such expander and the note "The saved weekly summary covers all countries, so it is hidden while a country filter is on." is shown."""
+"""AC-38 — Given the app on defaults with week 2011-09-19, then the Overview has a markdown containing the computed headline "Net revenue £319 746, +43.9% vs last week, +35.6% vs same week last year; 1 flag." (DEC-26, in the reading strip of DEC-30), no markdown equal to the saved AI headline outside the expander, and one expander labelled "AI-written summary, saved; numbers above are computed" containing the DEC-14 label, the AI headline "Revenue and orders jump to an unusually strong week, led by pantry products" and the summary text with no `"` character; on preset "UK only" there is no such expander and the note "The saved weekly summary covers all countries, so it is hidden while a country filter is on." is shown."""
 
 from datetime import date
 
@@ -18,10 +18,8 @@ def test_ac_38_summary_headline_and_expander() -> None:
     at.selectbox(key="week").select(date(2011, 9, 19)).run()
     assert not at.exception
     values = [str(m.value) for m in at.markdown]
-    assert (
-        f"Net revenue £319{S}746, +43.9% vs last week, +35.6% vs same week last year; 1 flag."
-        in values
-    )
+    headline = f"Net revenue £319{S}746, +43.9% vs last week, +35.6% vs same week last year; 1 flag."
+    assert any(headline in v for v in values)
     assert AI_HEADLINE not in values
     found = [e for e in at.expander if e.label == EXPANDER]
     assert len(found) == 1
