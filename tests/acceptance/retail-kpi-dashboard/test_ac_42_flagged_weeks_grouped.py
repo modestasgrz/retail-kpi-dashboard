@@ -1,10 +1,11 @@
-"""AC-42 — Given the app on defaults, when Flagged weeks is opened, then there is one group per flagged week (9 groups), and the group for 2011-12-05 is a markdown heading exactly "**2011-12-05 – 2011-12-11** :gray-badge[Partial week] :blue-badge[Revenue swing] :orange-badge[Large cancellations] :orange-badge[One big order]" followed by a markdown list whose text contains each of the week's full reasons."""
+"""AC-42 — Given the app on defaults, when Flagged weeks is opened, then there is one group per flagged week (9 groups), and the group for 2011-12-05 is a markdown heading exactly "2011-12-05 – 2011-12-11 :gray-badge[Partial week] :orange-badge[Placed and cancelled]" followed by a markdown list whose text contains each of the week's full reasons; the list of 2011-09-19 contains "Top products: Set Of Tea Coffee Sugar Tins Pantry +£8 265", "(11.5% of the change)", "Top countries: United Kingdom +£113 442" and "(90.3% of the change)"."""
 
 from datetime import date
 
 from fixture import REPO, app
 
-HEADING = "**2011-12-05 – 2011-12-11** :gray-badge[Partial week] :blue-badge[Revenue swing] :orange-badge[Large cancellations] :orange-badge[One big order]"
+S = "\u202f"
+HEADING = "**2011-12-05 – 2011-12-11** :gray-badge[Partial week] :orange-badge[Placed and cancelled]"
 
 
 def test_ac_42_flagged_weeks_grouped() -> None:
@@ -25,3 +26,12 @@ def test_ac_42_flagged_weeks_grouped() -> None:
     ).selected
     for f in week.flags:
         assert f.reason in after
+    swing = next(v for v in headings if v.startswith("**2011-09-19"))
+    drivers = values[values.index(swing) + 1]
+    for needle in [
+        f"Top products: Set Of Tea Coffee Sugar Tins Pantry +£8{S}265",
+        "(11.5% of the change)",
+        f"Top countries: United Kingdom +£113{S}442",
+        "(90.3% of the change)",
+    ]:
+        assert needle in drivers, needle
