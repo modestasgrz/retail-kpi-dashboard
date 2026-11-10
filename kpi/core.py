@@ -221,14 +221,14 @@ def top_drivers(
     week: date,
     base_weeks: list[date],
     labels: dict[str, str],
+    total: float,
 ) -> Drivers:
-    """DEC-24: contribution = value this week − mean over the base weeks (missing = 0); up to 3 with the sign of the total, largest first. `values` is indexed by (week, item)."""
+    """DEC-24: contribution = value this week − mean over the base weeks (missing = 0), snapped to 9 decimals; up to 3 with the sign of the filter's total change, largest first. `values` is indexed by (week, item)."""
     frame = values.unstack(fill_value=0).reindex([week, *base_weeks], fill_value=0)
     contributions = {
-        str(k): float(v)
+        str(k): round(float(v), 9)
         for k, v in (frame.iloc[0] - frame.iloc[1:].mean()).to_dict().items()
     }
-    total = sum(contributions.values())
     items = sorted(
         ((labels.get(k, k), v) for k, v in contributions.items() if v * total > 0),
         key=lambda item: (-abs(item[1]), item[0]),
@@ -271,7 +271,12 @@ def sources(row: WeekRow, r: dict[str, Any]) -> dict[str, str]:
 
 
 def drivers(
-    rule: str, week: date, base_weeks: list[date], country: str, data: Data
+    rule: str,
+    week: date,
+    base_weeks: list[date],
+    country: str,
+    data: Data,
+    total: float,
 ) -> list[Drivers]:
     """Top 3 drivers of a swing flag (DEC-24): products by net revenue, countries by net revenue or orders."""
     weeks = [week, *base_weeks]
@@ -291,7 +296,7 @@ def drivers(
             str(code): capwords(str(d))
             for code, d in zip(latest["stock_code"], latest["description"], strict=True)
         }
-        found.append(top_drivers("product", net, week, base_weeks, labels))
+        found.append(top_drivers("product", net, week, base_weeks, labels, total))
     if country in (ALL, OUTSIDE_UK):
         single = [c for c in data.countries if c not in (ALL, OUTSIDE_UK, UK)]
         names = single + ([UK] if country == ALL else [])
@@ -304,7 +309,7 @@ def drivers(
             else rows["orders"].astype(float)
         )
         by_week = value.groupby([rows["week_start"], rows["filter"]]).sum()
-        found.append(top_drivers("country", by_week, week, base_weeks, {}))
+        found.append(top_drivers("country", by_week, week, base_weeks, {}, total))
     return found
 
 
@@ -345,17 +350,6 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
         }
         row["net_revenue_vs4w"] = wow(kpis["net_revenue"], avg4["net_revenue"])
         row["orders_vs4w"] = wow(kpis["orders"], avg4["orders"])
-        last_year = table[week - YEAR]
-        partial = week <= data.data_end.date() < week + timedelta(days=6)
-        comparable_year = (
-            not partial
-            and int(r["product_lines"]) > 0
-            and int(last_year["product_lines"]) > 0
-        )
-        ly = derived(last_year)
-        row.update(
-            {f"{k}_yoy": wow(kpis[k], ly[k]) if comparable_year else None for k in YOY}
-        )
         rate, base = kpis["cancellation_rate"], prev["cancellation_rate"]
         row["cancellation_rate_change_pp"] = (
             rate - base if rate is not None and base is not None else None
@@ -381,9 +375,25 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
         )
         for flag in row["flags"]:
             if flag.rule in ("revenue_swing", "orders_swing"):
+                k = "net_revenue" if flag.rule == "revenue_swing" else "orders"
                 flag.drivers = drivers(
-                    flag.rule, week, base_weeks, filters.country, data
+                    flag.rule,
+                    week,
+                    base_weeks,
+                    filters.country,
+                    data,
+                    kpis[k] - (avg4[k] or 0.0),
                 )
+        last_year = table[week - YEAR]
+        comparable_year = (
+            not any(f.rule == "partial_week" for f in row["flags"])
+            and int(r["product_lines"]) > 0
+            and int(last_year["product_lines"]) > 0
+        )
+        ly = derived(last_year)
+        row.update(
+            {f"{k}_yoy": wow(kpis[k], ly[k]) if comparable_year else None for k in YOY}
+        )
         weeks.append(WeekRow(**row))
         week += timedelta(days=7)
     selected = next(w for w in weeks if w.week_start == filters.week)
