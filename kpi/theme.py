@@ -10,10 +10,12 @@ BLUE = "#3B82F6"
 GREEN = "#22C55E"
 AMBER = "#F59E0B"
 RED = "#EF4444"
+GOOD = "#34D399"
+BAD = "#F87171"
 FONT = '"Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif'
-RETURNING = "#2563EB"
-NEW = "#0AA2C0"
-SERIES = [BLUE, NEW]
+RETURNING = MUTED
+NEW = BLUE
+SERIES = [BLUE, RETURNING]
 
 axis = {
     "showgrid": True,
@@ -41,13 +43,13 @@ TEMPLATE = go.layout.Template(
             "orientation": "h",
             "y": 1.02,
             "yanchor": "bottom",
-            "x": 1,
-            "xanchor": "right",
+            "x": 0,
+            "xanchor": "left",
             "font": {"color": MUTED},
         },
-        "margin": {"l": 56, "r": 16, "t": 48, "b": 40},
+        "margin": {"l": 56, "r": 16, "t": 30, "b": 40},
         "title": {"font": {"size": 15, "color": TEXT}, "x": 0, "xanchor": "left"},
-        "bargap": 0.25,
+        "bargap": 0.15,
         "barmode": "stack",
         "separators": ".\u202f",
     }

@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from kpi import theme
 from kpi.core import run_scenario
 from kpi.fmt import count, money, pct
 from kpi.models import (
@@ -38,10 +39,20 @@ VIEWS = {
 COLOUR = {
     "no_data": "gray",
     "partial_week": "gray",
-    "revenue_swing": "blue",
-    "orders_swing": "blue",
+    "revenue_swing": "orange",
+    "orders_swing": "orange",
     "large_cancellations": "orange",
     "top_line": "orange",
+    "placed_cancelled": "orange",
+}
+SHORT_LABELS = {
+    "no_data": "No sales",
+    "partial_week": "Partial",
+    "revenue_swing": "Revenue",
+    "orders_swing": "Orders",
+    "large_cancellations": "Cancels",
+    "top_line": "Big line",
+    "placed_cancelled": "Placed+cancelled",
 }
 SHORT = (date(2011, 3, 7), date(2011, 4, 25))
 CALM = (date(2011, 1, 24), date(2011, 4, 18))
@@ -67,7 +78,7 @@ def scen(
 
 def range_line(s: Any) -> str:
     f, t = s.filters, s.totals
-    return f"Range {f.start} – {f.end + timedelta(days=6)} · revenue {money(t.revenue)} · orders {count(t.orders)} · flagged weeks {count(t.flagged_weeks)}"
+    return f"Range {f.start} – {f.end + timedelta(days=6)} · net revenue {money(t.net_revenue)} · orders {count(t.orders)} · flagged weeks {count(t.flagged_weeks)}"
 
 
 def open_app(
@@ -147,7 +158,7 @@ def test_range_line_and_data_as_of(
     caps = captions(at)
     assert range_line(s) in caps
     assert any("Data as of 2011-12-09" in c for c in caps)
-    assert not [m for m in at.metric if m.label == "Range revenue"]
+    assert not [m for m in at.metric if m.label.startswith("Range")]
     assert sum(c.startswith("Range 20") for c in caps) == 1
 
 
@@ -199,14 +210,23 @@ def test_status_pill_and_flag_details(country: str, week: date) -> None:
         assert pills == [f":orange-badge[▲ {n} {word}]"]
         assert len(details) == 1
         text = "\n".join(str(m.value) for m in details[0].markdown)
+        labelled = 0
         for f in flags:
-            assert f"**{FLAG_LABELS[f.rule]}** · {f.reason}" in text
-        assert text.count("**") == 2 * n + sum(f.reason.count("**") for f in flags)
+            label = FLAG_LABELS[f.rule]
+            if f.reason.startswith(f"{label}:"):
+                assert f"- {f.reason}" in text
+                assert f"**{label}**" not in text
+            else:
+                labelled += 1
+                assert f"- **{label}** · {f.reason}" in text
+        assert text.count("**") == 2 * labelled + sum(
+            f.reason.count("**") for f in flags
+        )
 
 
 def test_pill_grammar_covers_singular_plural_and_clear() -> None:
     counts = {len(w.flags) for w in scen().weeks}
-    assert {0, 1, 2, 3, 4} <= counts
+    assert counts == {0, 1, 2}
 
 
 # ---------- sparklines ----------
@@ -217,15 +237,14 @@ def window(s: Any, key: str) -> list[float]:
     return [v for w in shown if (v := getattr(w, key)) is not None]
 
 
-BIG = {"Revenue": "revenue", "Orders": "orders", "Average order value": "aov"}
+BIG = {"Net revenue": "net_revenue", "Orders": "orders", "Avg order (net)": "net_aov"}
 SMALL = [
+    "Gross revenue",
     "Units",
     "Customers",
     "New customers",
     "Returning customers",
-    "Cancellation rate",
-    "Cancelled value",
-    "Revenue after cancellations",
+    "Cancelled",
 ]
 
 
@@ -262,17 +281,19 @@ def test_sparkline_window(
 def test_sparkline_skips_none_aov_for_sparse_country() -> None:
     at = open_app("Bahrain", None, date(2011, 6, 6))
     s = scen("Bahrain", date(2011, 6, 6))
-    revenue = list(metric(at, "Revenue").proto.chart_data)
-    aov = list(metric(at, "Average order value").proto.chart_data)
-    assert len(revenue) == 12
-    assert len(aov) == len(
-        [w for w in s.weeks if w.week_start <= date(2011, 6, 6)][-12:]
-    ) - sum(
-        1
-        for w in s.weeks
-        if date(2011, 3, 21) <= w.week_start <= date(2011, 6, 6) and w.aov is None
-    )
+    shown = [w for w in s.weeks if w.week_start <= date(2011, 6, 6)][-12:]
+    net = list(metric(at, "Net revenue").proto.chart_data)
+    aov = list(metric(at, "Avg order (net)").proto.chart_data)
+    assert len(net) == 12
+    assert len(aov) == len([w for w in shown if w.net_aov is not None])
     assert len(aov) < 12
+
+
+def test_sparklines_are_area_charts() -> None:
+    at = open_app()
+    area = 2
+    for label in BIG:
+        assert metric(at, label).proto.chart_type == area, label
 
 
 # ---------- Trends ----------
@@ -338,13 +359,14 @@ def test_uk_only_partial_trace_and_annotation() -> None:
         str(LAST_WEEK),
     ]
     assert tr["marker"]["symbol"] == "circle-open"
-    assert drawn[0][1] == pytest.approx(s.weeks[-2].revenue)
-    assert drawn[-1][1] == pytest.approx(p.revenue)
+    assert drawn[0][1] == pytest.approx(s.weeks[-2].net_revenue)
+    assert drawn[-1][1] == pytest.approx(p.net_revenue)
     assert tr["line"]["dash"] == "dot"
+    assert tr["line"]["color"] == tr["marker"]["color"] == theme.MUTED
+    assert tr["showlegend"] is False
     texts = [a["text"] for a in rev["layout"]["annotations"]]
-    expected = f"Partial week, {money(p.cancelled_value)} cancelled ({pct(100 * p.cancelled_value / p.revenue)})"
-    assert expected in texts
-    assert len([t for t in texts if t.startswith("Partial week")]) == 1
+    expected = f"Partial · {pct(100 * p.cancelled_value / p.revenue)} cancelled"
+    assert texts == [expected]
 
 
 @pytest.mark.parametrize(
@@ -377,7 +399,7 @@ def test_range_that_is_only_the_partial_week() -> None:
     assert rev["data"][0]["y"] == [None]
     tr = next(t for t in rev["data"] if t["name"] == "Partial week")
     assert [str(x)[:10] for x in tr["x"]] == [str(LAST_WEEK)]
-    assert tr["y"] == [pytest.approx(s.selected.revenue)]
+    assert tr["y"] == [pytest.approx(s.selected.net_revenue)]
     assert tr["marker"]["symbol"] == "circle-open"
 
 
@@ -415,17 +437,24 @@ def test_flag_groups_colours_order_and_lines(
         for w in flagged
     ]
     assert [h[2:12] for h in heads] == sorted(h[2:12] for h in heads)
-    lists = [v for v in vals if v.startswith("- **")]
-    assert lists == [
-        "\n".join(f"- **{FLAG_LABELS[f.rule]}:** {f.reason}" for f in w.flags)
-        for w in flagged
-    ]
+    lists = [vals[vals.index(h) + 1] for h in heads]
+    for listed, w in zip(lists, flagged, strict=True):
+        top = [line for line in listed.split("\n") if not line.startswith(" ")]
+        want = []
+        for f in w.flags:
+            label = FLAG_LABELS[f.rule]
+            want.append(
+                f"- {f.reason}"
+                if f.reason.startswith(f"{label}:")
+                else f"- **{label}:** {f.reason}"
+            )
+        assert top == want
     assert not at.success
 
 
 def test_flag_badge_colours_cover_every_rule() -> None:
     seen: dict[str, str] = {}
-    for country in (ALL, "Bahrain", "Germany"):
+    for country in (ALL, "Bahrain", "Australia"):
         at = open_app(country, None, None, "flags")
         for h in (v for v in markdowns(at) if v.startswith("**20")):
             for colour, label in re.findall(r":(\w+)-badge\[([^\]]+)\]", h):
@@ -475,12 +504,13 @@ def test_table_rows_flags_and_pinning(
 ) -> None:
     start, end = span or (FIRST_WEEK, LAST_WEEK)
     at = open_app(country, span, None, "table")
+    at.toggle(key="all_weeks").set_value(True).run()
     s = scen(country, chosen(at), start, end)
     df = frame(at).value
     assert len(df) == len(s.weeks)
     assert df["Week"].astype(str).tolist() == [str(w.week_start) for w in s.weeks]
     assert df["Flags"].tolist() == [
-        ", ".join(FLAG_LABELS[f.rule] for f in w.flags) for w in s.weeks
+        ", ".join(SHORT_LABELS[f.rule] for f in w.flags) for w in s.weeks
     ]
     cols = json.loads(frame(at).proto.columns)
     assert cols["Week"]["pinned"] is True
@@ -490,14 +520,20 @@ def test_table_rows_flags_and_pinning(
 
 def test_table_change_cells_match_core_signs() -> None:
     at = open_app(ALL, None, None, "table")
+    at.toggle(key="all_weeks").set_value(True).run()
+    at.toggle(key="changes").set_value(True).run()
     s = scen()
     df = frame(at).value
-    for col, key in (("Rev. change", "revenue_wow"), ("Orders change", "orders_wow")):
+    for col, key in (
+        ("Net vs last week", "net_revenue_wow"),
+        ("Net vs last year", "net_revenue_yoy"),
+        ("Orders vs last week", "orders_wow"),
+    ):
         for got, w in zip(df[col].tolist(), s.weeks, strict=True):
             want = getattr(w, key)
             assert math.isnan(got) if want is None else got == pytest.approx(want)
-    assert any(v > 0 for v in df["Rev. change"].dropna())
-    assert any(v < 0 for v in df["Rev. change"].dropna())
+    assert any(v > 0 for v in df["Net vs last week"].dropna())
+    assert any(v < 0 for v in df["Net vs last week"].dropna())
 
 
 def test_table_download_button_present() -> None:
