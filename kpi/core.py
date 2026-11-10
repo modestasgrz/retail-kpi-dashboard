@@ -16,6 +16,8 @@ from kpi.models import (
     ALL,
     OUTSIDE_UK,
     UK,
+    Driver,
+    Drivers,
     Filters,
     Flag,
     Ranked,
@@ -29,6 +31,7 @@ DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "derived"
 SWING_PCT = 40.0
 CANCEL_SHARE = 25.0
 TOP_LINE_SHARE = 25.0
+YEAR = timedelta(days=364)
 CSV_HEADER = [
     "week_start",
     "revenue_gbp",
@@ -47,6 +50,11 @@ CSV_HEADER = [
     "revenue_wow_pct",
     "orders_wow_pct",
     "flags",
+    "net_aov_gbp",
+    "net_revenue_wow_pct",
+    "net_revenue_yoy_pct",
+    "orders_yoy_pct",
+    "net_aov_yoy_pct",
 ]
 WOW = [
     "revenue",
@@ -58,7 +66,9 @@ WOW = [
     "returning_customers",
     "cancelled_value",
     "net_revenue",
+    "net_aov",
 ]
+YOY = ["net_revenue", "orders", "net_aov"]
 
 
 class Data(BaseModel):
@@ -113,6 +123,7 @@ def wow(now: float | None, base: float | None) -> float | None:
 
 def derived(r: dict[str, Any]) -> dict[str, Any]:
     orders, cancels = int(r["orders"]), int(r["cancellation_invoices"])
+    net = float(r["revenue"]) - float(r["cancelled_value"])
     return {
         "revenue": float(r["revenue"]),
         "orders": orders,
@@ -125,7 +136,8 @@ def derived(r: dict[str, Any]) -> dict[str, Any]:
         if orders + cancels
         else None,
         "cancelled_value": float(r["cancelled_value"]),
-        "net_revenue": float(r["revenue"]) - float(r["cancelled_value"]),
+        "net_revenue": net,
+        "net_aov": net / orders if orders else None,
     }
 
 
@@ -148,33 +160,43 @@ def week_flags(
             ("partial_week", f"Data ends {data_end.date()}; the week is missing days")
         )
     comparable = int(r["product_lines"]) > 0 and prev_lines > 0
-    if comparable and swing(row["revenue_vs4w"]):
+    if comparable and swing(row["net_revenue_vs4w"]):
         flags.append(
             (
                 "revenue_swing",
-                f"Revenue {change(row['revenue_vs4w'])} vs 4-week average ({money(revenue)} vs {money(avg4['revenue'] or 0)})",
+                f"Net revenue {change(row['net_revenue_vs4w'])} vs 4-week average ({money(kpis['net_revenue'])} vs {money(avg4['net_revenue'] or 0)})",
             )
         )
     if comparable and swing(row["orders_vs4w"]):
+        base = avg4["orders"] or 0
         flags.append(
             (
                 "orders_swing",
-                f"Orders {change(row['orders_vs4w'])} vs 4-week average ({count(kpis['orders'])} vs {grouped(rounded(avg4['orders'] or 0, '0.1'))})",
+                f"Orders {change(row['orders_vs4w'])} vs 4-week average ({count(kpis['orders'])} vs {grouped(rounded(base, '1' if base >= 10 else '0.1'))})",
             )
         )
-    if (
-        revenue > 0
-        and (cancelled := share(kpis["cancelled_value"], revenue)) >= CANCEL_SHARE
-    ):
+    placed_cancelled = (
+        revenue > 0 and share(float(r["pc_cancelled"]), revenue) > TOP_LINE_SHARE
+    )
+    unmatched = kpis["cancelled_value"] - (
+        float(r["matched_cancelled_value"]) if placed_cancelled else 0.0
+    )
+    if revenue > 0 and share(unmatched, revenue) >= CANCEL_SHARE:
+        cancelled = share(kpis["cancelled_value"], revenue)
         flags.append(
             (
                 "large_cancellations",
                 f"{money(kpis['cancelled_value'])} cancelled against {money(revenue)} revenue ({pct(float(cancelled))})",
             )
         )
+    same_line = (r["top_line_invoice"], r["top_line_description"]) == (
+        r["pc_invoice"],
+        r["pc_description"],
+    )
     if (
         revenue > 0
         and (top := share(float(r["top_line_revenue"]), revenue)) > TOP_LINE_SHARE
+        and not (placed_cancelled and same_line)
     ):
         flags.append(
             (
@@ -182,7 +204,50 @@ def week_flags(
                 f"One line is {pct(float(top))} of revenue: {capwords(r['top_line_description'])}, {money(float(r['top_line_revenue']))} (invoice {r['top_line_invoice']})",
             )
         )
+    if placed_cancelled:
+        placed = float(r["pc_placed"])
+        flags.append(
+            (
+                "placed_cancelled",
+                f"Placed and cancelled: {money(placed)}, net {money(placed - float(r['pc_cancelled']))} ({capwords(r['pc_description'])}, invoice {r['pc_invoice']})",
+            )
+        )
     return [Flag(week_start=week, rule=rule, reason=reason) for rule, reason in flags]
+
+
+def top_drivers(
+    by: str,
+    values: pd.Series,
+    week: date,
+    base_weeks: list[date],
+    labels: dict[str, str],
+    total: float,
+) -> Drivers:
+    """DEC-24: contribution = value this week − mean over the base weeks (missing = 0), snapped to 9 decimals; up to 3 with the sign of the filter's total change, largest first. `values` is indexed by (week, item)."""
+    frame = values.unstack(fill_value=0).reindex([week, *base_weeks], fill_value=0)
+    contributions = {
+        str(k): round(float(v), 9)
+        for k, v in (frame.iloc[0] - frame.iloc[1:].mean()).to_dict().items()
+    }
+    items = sorted(
+        ((labels.get(k, k), v) for k, v in contributions.items() if v * total > 0),
+        key=lambda item: (-abs(item[1]), item[0]),
+    )[:3]
+    return Drivers(
+        by=by,
+        items=[Driver(label=label, change=value) for label, value in items],
+        explained_pct=sum(v for _, v in items) / total * 100 if total else None,
+    )
+
+
+def headline(row: WeekRow) -> str:
+    """The computed one-sentence headline of the selected week (DEC-26)."""
+    if row.product_lines == 0:
+        return "No sales this week."
+    partial = any(f.rule == "partial_week" for f in row.flags)
+    n = len(row.flags)
+    flags = "no flags" if n == 0 else f"{n} flag{'s' if n > 1 else ''}"
+    return f"Net revenue {money(row.net_revenue)}{' (partial week)' if partial else ''}, {change(row.net_revenue_wow)} vs last week, {change(row.net_revenue_yoy)} vs same week last year; {flags}."
 
 
 def sources(row: WeekRow, r: dict[str, Any]) -> dict[str, str]:
@@ -199,9 +264,53 @@ def sources(row: WeekRow, r: dict[str, Any]) -> dict[str, str]:
         "new_customers": f"{count(row.new_customers)} of {count(row.customers)} customers had their first product line in the whole dataset in {rng}",
         "returning_customers": f"customers {count(row.customers)} − new customers {count(row.new_customers)}, {rng}",
         "cancellation_rate": f"cancellation invoices {count(row.cancellation_invoices)} / (orders {count(row.orders)} + cancellation invoices {count(row.cancellation_invoices)}) × 100, {rng}",
-        "cancelled_value": f"−sum(Quantity × Price) over {count(int(r['product_cancellation_lines']))} cancellation lines with a product code, {rng}",
+        "cancelled_value": f"−sum(Quantity × Price) over {count(int(r['product_cancellation_lines']))} cancellation lines with a product code, {rng}; {pct(100 * row.cancelled_value / row.revenue if row.revenue > 0 else None)} of gross revenue; cancellation rate {pct(row.cancellation_rate)} ({count(row.cancellation_invoices)} of {count(row.orders + row.cancellation_invoices)} invoices)",
         "net_revenue": f"revenue {money(row.revenue)} − cancelled value {money(row.cancelled_value)}, {rng}",
+        "net_aov": f"net revenue {money2(row.net_revenue)} / orders {count(row.orders)}, {rng}",
     }
+
+
+def drivers(
+    rule: str,
+    week: date,
+    base_weeks: list[date],
+    country: str,
+    data: Data,
+    total: float,
+) -> list[Drivers]:
+    """Top 3 drivers of a swing flag (DEC-24): products by net revenue, countries by net revenue or orders."""
+    weeks = [week, *base_weeks]
+    found: list[Drivers] = []
+    if rule == "revenue_swing":
+        p = data.products[
+            (data.products["filter"] == country)
+            & data.products["week_start"].isin(weeks)
+        ]
+        net = (
+            (p["revenue"] - p["cancelled_value"])
+            .groupby([p["week_start"], p["stock_code"]])
+            .sum()
+        )
+        latest = p.sort_values("week_start").drop_duplicates("stock_code", keep="last")
+        labels = {
+            str(code): capwords(str(d))
+            for code, d in zip(latest["stock_code"], latest["description"], strict=True)
+        }
+        found.append(top_drivers("product", net, week, base_weeks, labels, total))
+    if country in (ALL, OUTSIDE_UK):
+        single = [c for c in data.countries if c not in (ALL, OUTSIDE_UK, UK)]
+        names = single + ([UK] if country == ALL else [])
+        rows = data.weekly[
+            data.weekly["filter"].isin(names) & data.weekly["week_start"].isin(weeks)
+        ]
+        value = (
+            rows["revenue"] - rows["cancelled_value"]
+            if rule == "revenue_swing"
+            else rows["orders"].astype(float)
+        )
+        by_week = value.groupby([rows["week_start"], rows["filter"]]).sum()
+        found.append(top_drivers("country", by_week, week, base_weeks, {}, total))
+    return found
 
 
 def ranked(rows: pd.DataFrame, label: str) -> list[Ranked]:
@@ -229,13 +338,17 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
         kpis = derived(r)
         row: dict[str, Any] = {**kpis, "week_start": week}
         row.update({f"{k}_wow": wow(kpis[k], prev[k]) for k in WOW})
-        before = [table[week - timedelta(days=7 * n)] for n in range(1, 5)]
-        sold = [b for b in before if int(b["product_lines"]) > 0]
+        base_weeks = [
+            b
+            for n in range(1, 5)
+            if int(table[b := week - timedelta(days=7 * n)]["product_lines"]) > 0
+        ]
+        sold = [derived(table[b]) for b in base_weeks]
         avg4 = {
             k: sum(float(b[k]) for b in sold) / len(sold) if sold else None
-            for k in ("revenue", "orders")
+            for k in ("net_revenue", "orders")
         }
-        row["revenue_vs4w"] = wow(kpis["revenue"], avg4["revenue"])
+        row["net_revenue_vs4w"] = wow(kpis["net_revenue"], avg4["net_revenue"])
         row["orders_vs4w"] = wow(kpis["orders"], avg4["orders"])
         rate, base = kpis["cancellation_rate"], prev["cancellation_rate"]
         row["cancellation_rate_change_pp"] = (
@@ -259,6 +372,27 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
             avg4,
             row,
             data.data_end,
+        )
+        for flag in row["flags"]:
+            if flag.rule in ("revenue_swing", "orders_swing"):
+                k = "net_revenue" if flag.rule == "revenue_swing" else "orders"
+                flag.drivers = drivers(
+                    flag.rule,
+                    week,
+                    base_weeks,
+                    filters.country,
+                    data,
+                    kpis[k] - (avg4[k] or 0.0),
+                )
+        last_year = table[week - YEAR]
+        comparable_year = (
+            not any(f.rule == "partial_week" for f in row["flags"])
+            and int(r["product_lines"]) > 0
+            and int(last_year["product_lines"]) > 0
+        )
+        ly = derived(last_year)
+        row.update(
+            {f"{k}_yoy": wow(kpis[k], ly[k]) if comparable_year else None for k in YOY}
         )
         weeks.append(WeekRow(**row))
         week += timedelta(days=7)
@@ -296,6 +430,7 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
         sources=sources(selected, table[filters.week]),
         summary=saved,
         data_end=data.data_end.date(),
+        headline=headline(selected),
     )
 
 
@@ -328,6 +463,11 @@ def weekly_csv(scenario: Scenario) -> bytes:
                 num(w.revenue_wow),
                 num(w.orders_wow),
                 "; ".join(f.rule for f in w.flags),
+                num(w.net_aov),
+                num(w.net_revenue_wow),
+                num(w.net_revenue_yoy),
+                num(w.orders_yoy),
+                num(w.net_aov_yoy),
             ]
         )
     return out.getvalue().encode("utf-8")

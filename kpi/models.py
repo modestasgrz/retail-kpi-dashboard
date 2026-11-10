@@ -15,6 +15,7 @@ FLAG_LABELS = {
     "orders_swing": "Orders swing",
     "large_cancellations": "Large cancellations",
     "top_line": "One big order",
+    "placed_cancelled": "Placed and cancelled",
 }
 
 
@@ -48,10 +49,24 @@ class Filters(BaseModel):
         return self
 
 
+class Driver(BaseModel):
+    label: str
+    change: float
+
+
+class Drivers(BaseModel):
+    """Top contributions to a swing (DEC-24), by "product" or "country"."""
+
+    by: str
+    items: list[Driver]
+    explained_pct: float | None
+
+
 class Flag(BaseModel):
     week_start: date
     rule: str
     reason: str
+    drivers: list[Drivers] = []
 
 
 class WeekRow(BaseModel):
@@ -66,10 +81,11 @@ class WeekRow(BaseModel):
     cancellation_rate: float | None
     cancelled_value: float
     net_revenue: float
+    net_aov: float | None
     cancellation_invoices: int
     product_lines: int
     lines_without_customer_id: int
-    revenue_vs4w: float | None
+    net_revenue_vs4w: float | None
     orders_vs4w: float | None
     revenue_wow: float | None
     orders_wow: float | None
@@ -81,6 +97,10 @@ class WeekRow(BaseModel):
     cancellation_rate_change_pp: float | None
     cancelled_value_wow: float | None
     net_revenue_wow: float | None
+    net_aov_wow: float | None
+    net_revenue_yoy: float | None
+    orders_yoy: float | None
+    net_aov_yoy: float | None
     flags: list[Flag]
 
 
@@ -115,3 +135,4 @@ class Scenario(BaseModel):
     sources: dict[str, str]
     summary: Summary | None
     data_end: date
+    headline: str
