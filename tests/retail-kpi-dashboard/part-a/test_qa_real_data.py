@@ -88,8 +88,8 @@ def test_weekly_has_one_row_per_filter_and_week_and_no_nan(
     assert weekly["filter"].nunique() == len(names)
     assert set(weekly["filter"]) == set(names)
     assert not weekly.duplicated(["filter", "week_start"]).any()
-    assert weekly.groupby("filter").size().eq(54).all()
-    assert weekly["week_start"].min() == pd.Timestamp("2010-11-29")
+    assert weekly.groupby("filter").size().eq(57).all()
+    assert weekly["week_start"].min() == pd.Timestamp("2010-11-08")
     assert weekly["week_start"].max() == pd.Timestamp(LAST_WEEK)
     assert (weekly["week_start"].dt.day_of_week == 0).all()
     numeric = weekly.drop(
@@ -164,6 +164,7 @@ def test_single_country_rows_sum_to_all_countries(
     weekly: pd.DataFrame, names: list[str], column: str
 ) -> None:
     singles = [c for c in names if c not in (ALL, OUTSIDE_UK)]
+    weekly = weekly[weekly["week_start"] >= pd.Timestamp(FIRST_WEEK)]
     everything = weekly[weekly["filter"] == ALL].set_index("week_start")[column]
     summed = weekly[weekly["filter"].isin(singles)].groupby("week_start")[column].sum()
     pd.testing.assert_series_equal(
@@ -215,13 +216,14 @@ def test_products_table_reconciles_with_weekly(
     assert not products.duplicated([*keys, "stock_code"]).any()
     assert (products["revenue"] > 0).all()
     assert products["description"].notna().all()
-    assert products["week_start"].min() >= pd.Timestamp("2010-11-29")
+    assert products["week_start"].min() >= pd.Timestamp("2010-11-08")
 
 
 def test_products_all_equals_sum_of_countries_per_stock_code(
     products: pd.DataFrame, names: list[str]
 ) -> None:
     singles = [c for c in names if c not in (ALL, OUTSIDE_UK)]
+    products = products[products["week_start"] >= pd.Timestamp(FIRST_WEEK)]
     keys = ["week_start", "stock_code"]
     a = products[products["filter"] == ALL].groupby(keys)["revenue"].sum()
     b = products[products["filter"].isin(singles)].groupby(keys)["revenue"].sum()
@@ -262,17 +264,21 @@ def test_flags_follow_rule_order_and_their_definitions(
     scenarios: dict[str, Scenario],
 ) -> None:
     for c, s in scenarios.items():
+        lines = {w.week_start: w.product_lines for w in s.weeks}
         for w in s.weeks:
             got = [f.rule for f in w.flags]
             assert got == sorted(got, key=RULE_ORDER.index), (c, w.week_start)
             assert len(got) == len(set(got))
             assert all(f.week_start == w.week_start for f in w.flags)
-            assert ("revenue_swing" in got) is (
-                w.product_lines > 0 and swing(w.revenue_wow)
-            ), (c, w.week_start)
-            assert ("orders_swing" in got) is (
-                w.product_lines > 0 and swing(w.orders_wow)
-            ), (c, w.week_start)
+            prev = lines.get(w.week_start - timedelta(days=7))
+            if prev is not None:
+                comparable = w.product_lines > 0 and prev > 0
+                assert ("revenue_swing" in got) is (
+                    comparable and swing(w.revenue_vs4w)
+                ), (c, w.week_start)
+                assert ("orders_swing" in got) is (
+                    comparable and swing(w.orders_vs4w)
+                ), (c, w.week_start)
             big = w.revenue > 0 and w.cancelled_value >= 0.25 * w.revenue - 1e-9
             if "large_cancellations" in got:
                 assert big, (c, w.week_start)

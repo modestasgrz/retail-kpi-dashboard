@@ -8,6 +8,14 @@ MAX_DATE = LAST_WEEK + timedelta(days=6)
 ALL = "All countries"
 UK = "United Kingdom"
 OUTSIDE_UK = "Outside UK"
+FLAG_LABELS = {
+    "no_data": "No sales",
+    "partial_week": "Partial week",
+    "revenue_swing": "Revenue swing",
+    "orders_swing": "Orders swing",
+    "large_cancellations": "Large cancellations",
+    "top_line": "One big order",
+}
 
 
 def monday(day: date) -> date:
@@ -61,6 +69,8 @@ class WeekRow(BaseModel):
     cancellation_invoices: int
     product_lines: int
     lines_without_customer_id: int
+    revenue_vs4w: float | None
+    orders_vs4w: float | None
     revenue_wow: float | None
     orders_wow: float | None
     aov_wow: float | None
@@ -104,3 +114,4 @@ class Scenario(BaseModel):
     flags: list[Flag]
     sources: dict[str, str]
     summary: Summary | None
+    data_end: date

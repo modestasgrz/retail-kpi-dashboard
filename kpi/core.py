@@ -10,7 +10,7 @@ from typing import Any
 import pandas as pd
 from pydantic import BaseModel, ConfigDict
 
-from kpi.fmt import change, count, money, money2, pct, rounded
+from kpi.fmt import change, count, grouped, money, money2, pct, rounded
 from kpi.models import (
     ALL,
     OUTSIDE_UK,
@@ -25,7 +25,7 @@ from kpi.models import (
 )
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "derived"
-SWING_PCT = 25.0
+SWING_PCT = 40.0
 CANCEL_SHARE = 25.0
 TOP_LINE_SHARE = 25.0
 CSV_HEADER = [
@@ -95,7 +95,7 @@ def countries(data_dir: Path = DATA_DIR) -> list[str]:
 
 
 def swing(change: float | None) -> bool:
-    """|change rounded half-up to 0.1| ≥ 25.0 (DEC-08)."""
+    """|change rounded half-up to 0.1| ≥ 40.0 (DEC-08)."""
     return change is not None and abs(rounded(change, "0.1")) >= SWING_PCT
 
 
@@ -132,7 +132,8 @@ def week_flags(
     week: date,
     r: dict[str, Any],
     kpis: dict[str, Any],
-    prev: dict[str, Any],
+    prev_lines: int,
+    avg4: dict[str, float | None],
     row: dict[str, Any],
     data_end: datetime,
 ) -> list[Flag]:
@@ -145,19 +146,19 @@ def week_flags(
         flags.append(
             ("partial_week", f"Data ends {data_end.date()}; the week is missing days")
         )
-    comparable = int(r["product_lines"]) > 0 and prev["orders"] > 0
-    if comparable and swing(row["revenue_wow"]):
+    comparable = int(r["product_lines"]) > 0 and prev_lines > 0
+    if comparable and swing(row["revenue_vs4w"]):
         flags.append(
             (
                 "revenue_swing",
-                f"Revenue {change(row['revenue_wow'])} vs previous week ({money(revenue)} vs {money(prev['revenue'])})",
+                f"Revenue {change(row['revenue_vs4w'])} vs 4-week average ({money(revenue)} vs {money(avg4['revenue'] or 0)})",
             )
         )
-    if comparable and swing(row["orders_wow"]):
+    if comparable and swing(row["orders_vs4w"]):
         flags.append(
             (
                 "orders_swing",
-                f"Orders {change(row['orders_wow'])} vs previous week ({count(kpis['orders'])} vs {count(prev['orders'])})",
+                f"Orders {change(row['orders_vs4w'])} vs 4-week average ({count(kpis['orders'])} vs {grouped(rounded(avg4['orders'] or 0, '0.1'))})",
             )
         )
     if (
@@ -227,6 +228,14 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
         kpis = derived(r)
         row: dict[str, Any] = {**kpis, "week_start": week}
         row.update({f"{k}_wow": wow(kpis[k], prev[k]) for k in WOW})
+        before = [table[week - timedelta(days=7 * n)] for n in range(1, 5)]
+        sold = [b for b in before if int(b["product_lines"]) > 0]
+        avg4 = {
+            k: sum(float(b[k]) for b in sold) / len(sold) if sold else None
+            for k in ("revenue", "orders")
+        }
+        row["revenue_vs4w"] = wow(kpis["revenue"], avg4["revenue"])
+        row["orders_vs4w"] = wow(kpis["orders"], avg4["orders"])
         rate, base = kpis["cancellation_rate"], prev["cancellation_rate"]
         row["cancellation_rate_change_pp"] = (
             rate - base if rate is not None and base is not None else None
@@ -241,7 +250,15 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
                 )
             }
         )
-        row["flags"] = week_flags(week, r, kpis, prev, row, data.data_end)
+        row["flags"] = week_flags(
+            week,
+            r,
+            kpis,
+            int(table[week - timedelta(days=7)]["product_lines"]),
+            avg4,
+            row,
+            data.data_end,
+        )
         weeks.append(WeekRow(**row))
         week += timedelta(days=7)
     selected = next(w for w in weeks if w.week_start == filters.week)
@@ -277,6 +294,7 @@ def run_scenario(filters: Filters, data_dir: Path = DATA_DIR) -> Scenario:
         flags=flags,
         sources=sources(selected, table[filters.week]),
         summary=saved,
+        data_end=data.data_end.date(),
     )
 
 

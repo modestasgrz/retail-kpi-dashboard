@@ -199,12 +199,12 @@ def test_read_concatenates_sheets_and_overlap_becomes_duplicates(
 # ------------------------------------------------------- build on odd inputs
 
 
-def test_every_filter_has_54_weeks_and_week_bounds(tmp_path: Path) -> None:
+def test_every_filter_has_57_weeks_and_week_bounds(tmp_path: Path) -> None:
     out = built(tmp_path, [row("1", at(20)), row("2", at(21), country="France")])
     w = pd.read_parquet(out / "weekly.parquet")
     sizes = w.groupby("filter").size()
-    assert set(sizes) == {54}
-    assert w["week_start"].min() == pd.Timestamp("2010-11-29")
+    assert set(sizes) == {57}
+    assert w["week_start"].min() == pd.Timestamp("2010-11-08")
     assert w["week_start"].max() == pd.Timestamp(LAST_WEEK)
     assert set(sizes.index) == set(
         json.loads((out / "meta.json").read_text())["countries"]
@@ -236,8 +236,8 @@ def test_lines_only_in_one_week_leave_other_weeks_empty(tmp_path: Path) -> None:
 
 def test_week_boundaries_sunday_night_and_monday_midnight(tmp_path: Path) -> None:
     rows = [
-        row("1", datetime(2010, 11, 28, 23, 59), price=1.0),
-        row("2", datetime(2010, 11, 29, 0, 0), price=2.0, desc="B"),
+        row("1", datetime(2010, 11, 7, 23, 59), price=1.0),
+        row("2", datetime(2010, 11, 8, 0, 0), price=2.0, desc="B"),
         row("3", datetime(2011, 12, 11, 23, 59), price=4.0, desc="C"),
         row("4", datetime(2011, 12, 12, 0, 0), price=8.0, desc="D"),
         row("5", datetime(2011, 9, 25, 23, 59), price=16.0, desc="E"),
@@ -246,7 +246,7 @@ def test_week_boundaries_sunday_night_and_monday_midnight(tmp_path: Path) -> Non
     out = built(tmp_path, rows)
     w = pd.read_parquet(out / "weekly.parquet")
     a = w[w["filter"] == ALL].set_index("week_start")["revenue"]
-    assert a[pd.Timestamp("2010-11-29")] == 2.0
+    assert a[pd.Timestamp("2010-11-08")] == 2.0
     assert a[pd.Timestamp("2011-12-05")] == 4.0
     assert a[pd.Timestamp("2011-09-19")] == 16.0
     assert a[pd.Timestamp("2011-09-26")] == 32.0
@@ -630,12 +630,12 @@ def test_no_large_cancellations_flag_when_revenue_is_zero(tmp_path: Path) -> Non
 @pytest.mark.parametrize(
     ("now_price", "flagged", "text"),
     [
-        (125.0, True, "Revenue +25.0% vs previous week (£125 vs £100)"),
-        (124.9, False, ""),
-        (75.0, True, "Revenue -25.0% vs previous week (£75 vs £100)"),
-        (75.04, True, "Revenue -25.0% vs previous week (£75 vs £100)"),
-        (75.06, False, ""),
-        (1000.0, True, "Revenue +900.0% vs previous week (£1" + N + "000 vs £100)"),
+        (140.0, True, "Revenue +40.0% vs 4-week average (£140 vs £100)"),
+        (139.9, False, ""),
+        (60.0, True, "Revenue -40.0% vs 4-week average (£60 vs £100)"),
+        (60.04, True, "Revenue -40.0% vs 4-week average (£60 vs £100)"),
+        (60.06, False, ""),
+        (1000.0, True, "Revenue +900.0% vs 4-week average (£1" + N + "000 vs £100)"),
     ],
 )
 def test_revenue_swing_boundaries(
@@ -650,24 +650,25 @@ def test_revenue_swing_boundaries(
 
 def test_orders_swing_boundary_and_reason(tmp_path: Path) -> None:
     prev = [
-        row(str(i), at(13), price=1.0, code=f"2000{i}", desc=f"D{i}") for i in range(4)
+        row(str(i), at(13), price=1.0, code=f"2000{i}", desc=f"D{i}") for i in range(5)
     ]
     now = [
         row(str(10 + i), at(20), price=1.0, code=f"2000{i}", desc=f"D{i}")
-        for i in range(5)
+        for i in range(7)
     ]
     got = {f.rule: f.reason for f in scen(built(tmp_path, prev + now)).selected.flags}
-    assert got["orders_swing"] == "Orders +25.0% vs previous week (5 vs 4)"
+    assert got["orders_swing"] == "Orders +40.0% vs 4-week average (7 vs 5.0)"
     got = {
         f.rule: f.reason
-        for f in scen(built(tmp_path / "b", prev + now[:4] + [])).selected.flags
+        for f in scen(built(tmp_path / "b", prev + now[:6])).selected.flags
     }
     assert "orders_swing" not in got
 
 
 def test_swing_not_flagged_when_previous_week_is_empty(tmp_path: Path) -> None:
-    s = scen(built(tmp_path, [row("1", at(20), price=1000.0)]))
-    assert s.selected.revenue_wow is None
+    rows = [row("1", at(6), price=100.0), row("2", at(20), price=1000.0)]
+    s = scen(built(tmp_path, rows))
+    assert s.selected.revenue_vs4w == pytest.approx(900.0)
     assert not {"revenue_swing", "orders_swing"} & set(rules(s))
 
 

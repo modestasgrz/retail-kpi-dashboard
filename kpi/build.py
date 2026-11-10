@@ -10,7 +10,7 @@ from kpi.data import BUCKETS, PRODUCT_CODE, clean, read
 from kpi.download import FILE_NAME, download
 from kpi.models import ALL, FIRST_WEEK, LAST_WEEK, OUTSIDE_UK, UK
 
-WEEKS = pd.date_range(FIRST_WEEK - timedelta(days=7), LAST_WEEK, freq="7D")
+WEEKS = pd.date_range(FIRST_WEEK - timedelta(days=28), LAST_WEEK, freq="7D")
 DQ_COLUMNS = [f"{b}_lines" for b in BUCKETS]
 
 
@@ -97,7 +97,14 @@ def build(raw: pd.DataFrame, out_dir: Path) -> None:
     df["first_week"] = pd.to_datetime(df["Customer ID"].map(first_seen.to_dict()))
     df = df[df["week"].isin(WEEKS)]
     countries = sorted(
-        set(df.loc[df["bucket"] == "product", "Country"]) - {UK, ""}, key=str.casefold
+        set(
+            df.loc[
+                (df["bucket"] == "product") & (df["week"] >= pd.Timestamp(FIRST_WEEK)),
+                "Country",
+            ]
+        )
+        - {UK, ""},
+        key=str.casefold,
     )
     masks = {
         ALL: pd.Series(True, index=df.index),

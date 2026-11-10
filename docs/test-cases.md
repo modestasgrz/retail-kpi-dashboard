@@ -57,13 +57,15 @@ Products: LAMP 50 + 25 = 75, MUG BLUE 40 + 20 + 8 = 68, MUG RED 60. Countries: U
 | --- | --- | --- | --- |
 | W0 | no_data | 0 product lines | No sales lines this week |
 | W1 | top_line | largest line 40 / 80 = 50.0% > 25% | One line is 50.0% of revenue: MUG RED, £40 (invoice 500002) |
-| W2 | revenue_swing | +153.8% ≥ 25 | Revenue +153.8% vs previous week (£203 vs £80) |
-| W2 | orders_swing | +150.0% ≥ 25 | Orders +150.0% vs previous week (5 vs 2) |
+| W2 | revenue_swing | 4-week average = £80 (W1 is the only one of the 4 previous weeks with sales); +153.8% ≥ 40 | Revenue +153.8% vs 4-week average (£203 vs £80) |
+| W2 | orders_swing | 4-week average = 2 orders; +150.0% ≥ 40 | Orders +150.0% vs 4-week average (5 vs 2.0) |
 | W2 | top_line | 60 / 203 = 29.56% > 25% | One line is 29.6% of revenue: MUG RED, £60 (invoice 500003) |
 | W2 | (no large_cancellations) | 25 / 203 = 12.3% < 25% | |
 | W2 | (no partial_week) | data ends Sunday 2011-09-25, the last day of W2 | |
 
-Boundaries: a week with £100 revenue and £25.00 cancelled is flagged (25.0% ≥ 25%), £24.99 isn't. Four £10 lines (largest = exactly 25.0%) give no top_line flag (rule is strictly above 25%). `swing(24.94)` is False (rounds to 24.9), `swing(-24.96)` is True (rounds to −25.0).
+Boundaries: a week with £100 revenue and £25.00 cancelled is flagged (25.0% ≥ 25%), £24.99 isn't. Four £10 lines (largest = exactly 25.0%) give no top_line flag (rule is strictly above 25%). `swing(39.94)` is False (rounds to 39.9), `swing(-39.96)` is True (rounds to −40.0).
+
+Add one £2 line on 2011-08-30 (AC-33): the 4 weeks before W2 with sales are W1 (£80, 2 orders) and 2011-08-29 (£2, 1 order), so the 4-week average is £41 and 1.5 orders. Revenue (203 − 41) / 41 = +395.1%, reason "Revenue +395.1% vs 4-week average (£203 vs £41)"; orders (5 − 1.5) / 1.5 = +233.3%, reason "Orders +233.3% vs 4-week average (5 vs 1.5)".
 
 ## Range totals, W1..W2
 
