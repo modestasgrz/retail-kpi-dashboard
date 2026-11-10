@@ -6,7 +6,7 @@ from typing import Literal, cast
 import pandas as pd
 import streamlit as st
 
-from kpi.fmt import change, count, money, money2
+from kpi.fmt import change, count, money, money2, pct, rounded
 from kpi.models import ALL, FLAG_LABELS, OUTSIDE_UK
 from views.ui import flag_line, header, strip
 
@@ -27,12 +27,37 @@ PLAIN = {
 
 s = header("Overview")
 w = s.selected
+moves = [
+    (label, value, rounded(value, "0.1"))
+    for label, value in (
+        ("Net revenue", w.net_revenue_wow),
+        ("Orders", w.orders_wow),
+        ("Avg order (net)", w.net_aov_wow),
+        ("Gross revenue", w.revenue_wow),
+        ("Units", w.units_wow),
+        ("Customers", w.customers_wow),
+        ("New customers", w.new_customers_wow),
+        ("Returning customers", w.returning_customers_wow),
+        ("Cancelled", w.cancelled_value_wow),
+    )
+    if value is not None
+]
+if w.product_lines == 0:
+    now = "No sales this week."
+elif not moves:
+    now = "No comparison with last week."
+else:
+    biggest = max(moves, key=lambda m: abs(m[2]))
+    others = [abs(m[2]) for m in moves if m is not biggest]
+    now = f"Biggest move vs last week: {biggest[0]} {change(biggest[1])}" + (
+        f"; the other cards moved within ±{pct(float(max(others)))}." if others else "."
+    )
 strip(
     "How did the selected week go, and does anything need a look?",
-    s.headline,
-    "No sales this week. Pick another week in the sidebar."
+    now,
+    "Pick another week in the sidebar."
     if w.product_lines == 0
-    else f"Open Flag details below: {', '.join(FLAG_LABELS[f.rule] for f in w.flags)}."
+    else f"Read the flag details below: {', '.join(FLAG_LABELS[f.rule] for f in w.flags)}."
     if w.flags
     else "Nothing flagged. Scan the top products and countries, then switch weeks in the sidebar.",
 )
@@ -49,7 +74,7 @@ with pill.container(key="pill"):
         else ":green-badge[● All clear]"
     )
 if n:
-    with st.expander("Flag details"):
+    with st.expander("Flag details", expanded=True):
         st.markdown(
             "\n".join(flag_line(f, "- **{label}** · {reason}") for f in w.flags)
         )

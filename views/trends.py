@@ -14,12 +14,23 @@ full_weeks = [
     if w.product_lines > 0 and not any(f.rule == "partial_week" for f in w.flags)
 ]
 full = [w in full_weeks for w in s.weeks]
-if full_weeks:
-    high = max(full_weeks, key=lambda w: w.net_revenue)
-    low = min(full_weeks, key=lambda w: w.net_revenue)
-    now = f"Net revenue in range {money(s.totals.net_revenue)}; highest full week {high.week_start} ({money(high.net_revenue)}), lowest {low.week_start} ({money(low.net_revenue)})."
-else:
+sel = s.selected
+if not full_weeks:
     now = "No full week with sales in this range."
+elif sel in full_weeks:
+    rank = 1 + sum(w.net_revenue > sel.net_revenue for w in full_weeks)
+    suffix = (
+        "th"
+        if rank % 100 in (11, 12, 13)
+        else {1: "st", 2: "nd", 3: "rd"}.get(rank % 10, "th")
+    )
+    now = f"Week {sel.week_start}: net revenue {money(sel.net_revenue)}, the {rank}{suffix} highest of {len(full_weeks)} full weeks in range."
+else:
+    high = max(full_weeks, key=lambda w: w.net_revenue)
+    state = (
+        "had no sales" if sel.product_lines == 0 else "is partial, so it isn't ranked"
+    )
+    now = f"Week {sel.week_start} {state}; highest full week {high.week_start} ({money(high.net_revenue)})."
 strip(
     "Is the selected week part of a trend or a one-off?",
     now,
