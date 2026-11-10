@@ -15,9 +15,10 @@ h1 { font-weight: 650; letter-spacing: -0.01em; }
 [data-testid="stMetricLabel"] div { color: #A3B1C8; font-size: 0.85rem; white-space: normal; overflow: visible; text-overflow: clip; }
 .st-key-big [data-testid="stMetric"] { min-height: 196px; }
 .st-key-big [data-testid="stMetricValue"] { font-size: 2.1rem; }
-.st-key-small [data-testid="stMetric"] { min-height: 124px; padding: 10px 10px; }
+.st-key-small [data-testid="stMetric"] { min-height: 148px; padding: 10px 10px; }
 .st-key-small [data-testid="stMetricValue"] { font-size: 1.1rem; }
-.st-key-small [data-testid="stMetricLabel"] p { font-size: 0.74rem; word-break: normal; overflow-wrap: normal; hyphens: none; }
+.st-key-small [data-testid="stMetricLabel"] { padding-right: 4px; }
+.st-key-small [data-testid="stMetricLabel"] p { font-size: 0.72rem; word-break: normal; overflow-wrap: normal; hyphens: none; }
 [data-testid="stSidebar"] { border-right: 1px solid #22324F; }
 [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: #A3B1C8; }
 .st-key-asof [data-testid="stCaptionContainer"], .st-key-pill [data-testid="stMarkdownContainer"] { text-align: right; }

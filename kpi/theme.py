@@ -11,7 +11,6 @@ GREEN = "#22C55E"
 AMBER = "#F59E0B"
 RED = "#EF4444"
 FONT = '"Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif'
-META = "#A3B1C8"
 RETURNING = "#2563EB"
 NEW = "#0AA2C0"
 SERIES = [BLUE, NEW]

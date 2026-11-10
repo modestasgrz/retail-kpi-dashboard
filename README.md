@@ -48,9 +48,9 @@ These weekly figures match an earlier, independently written implementation of t
 
 ## Measured
 
-- 32 acceptance tests, one per acceptance criterion in `specs/retail-kpi-dashboard.md`. The core tests run on a 15-line fixture whose every value was worked out by hand first (`docs/test-cases.md`). The app tests run every page through Streamlit's `AppTest`: defaults, a preset moving the KPIs, Reset, the same KPI on every page, a bad date range, the week picker, help text, the summary label, the flagged page, the CSV download, attribution, the charts, and no network use.
-- 293 unit tests on the calc core: rounding boundaries, cleaning rules, country filters, flag thresholds, CSV, and real-data invariants over all 41 filter values × 53 weeks. The invariants include revenue after cancellations = revenue − cancelled, UK + outside UK = all countries, and the sum of single countries = all countries.
-- 60 app tests through `AppTest`: every preset, Custom and Reset, week fallback when the range changes, sparse countries on all 5 pages, every card's value, delta and help text against the core, and the CSV download bytes against the core.
+- 39 acceptance tests, one per acceptance criterion in `specs/retail-kpi-dashboard.md`. The core tests run on a 15-line fixture whose every value was worked out by hand first (`docs/test-cases.md`). The app tests run every page through Streamlit's `AppTest`: defaults, a preset moving the KPIs, Reset, the same KPI on every page, a bad date range, the week picker, help text, the summary label and expander, the flag status pill, the sparklines, chart gaps and the partial week, the grouped flagged page, the pinned weekly table, the CSV download, attribution, and no network use.
+- 336 unit tests on the calc core: rounding boundaries, cleaning rules, country filters, the 4-week-average swing rule and its thresholds, CSV, and real-data invariants over all 40 filter values × 53 weeks. The invariants include revenue after cancellations = revenue − cancelled, UK + outside UK = all countries, and the sum of single countries = all countries.
+- 150 app tests through `AppTest`: every preset, Custom and Reset, week fallback when the range changes, sparse countries on all 5 pages, every card's value, delta, help text and sparkline against the core, gaps in every chart for sparse countries, flag pills and groups, and the CSV download bytes against the core.
 - Rebuilding `data/derived/` from the raw file gives byte-identical tables.
 
 ## Run it yourself

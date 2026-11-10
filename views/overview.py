@@ -16,6 +16,7 @@ s = header("Overview")
 w = s.selected
 if s.filters.country == ALL and s.summary is not None:
     st.markdown(s.summary.headline.replace('"', ""))
+    st.caption(LABEL)
 
 week, pill = st.columns([4, 1], vertical_alignment="center")
 week.markdown(
@@ -96,7 +97,7 @@ for key, row in (("big", cards[:3]), ("small", cards[3:])):
                 chart_type="line",
             )
 st.caption(
-    f"Changes are vs the previous week; the lines show the last {len(recent)} weeks in range. Hover the ? on a card for its formula and inputs. A change shows n/a when the previous week had no base to compare with."
+    f"Changes are vs the previous week; the lines show the last {len(recent)} week{'s' if len(recent) > 1 else ''} in range. Hover the ? on a card for its formula and inputs. A change shows n/a when the previous week had no base to compare with."
 )
 
 left, right = st.columns(2)
@@ -118,10 +119,10 @@ for col, title, rows, name in (
                 hide_index=True,
                 width="stretch",
                 column_config={
-                    "Name": st.column_config.TextColumn(width=180),
+                    "Name": st.column_config.TextColumn(width=205),
                     "Revenue": st.column_config.Column(width=80),
                     "Share of week": st.column_config.ProgressColumn(
-                        format="%.1f%%", min_value=0, max_value=100, width=130
+                        format="%.1f%%", min_value=0, max_value=100, width=112
                     ),
                 },
             )

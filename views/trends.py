@@ -19,9 +19,7 @@ partial = next(
     None,
 )
 full = [ok and i != partial for i, ok in enumerate(sold)]
-flagged = [
-    w for i, w in enumerate(s.weeks) if w.flags and w.product_lines > 0 and i != partial
-]
+marked = [bool(w.flags) and ok for w, ok in zip(s.weeks, full, strict=True)]
 
 
 def chart(
@@ -36,8 +34,8 @@ def chart(
         title={"text": title, "yref": "container", "y": 0.97, "yanchor": "top"},
         height=360,
         margin={"t": 96},
-        yaxis={"tickformat": "~s", "rangemode": "tozero"}
-        | ({"tickprefix": "£"} if money_axis else {}),
+        yaxis={"rangemode": "tozero"}
+        | ({"tickprefix": "£", "tickformat": "~s"} if money_axis else {}),
     )
     for note in notes:
         fig.add_annotation(note)
@@ -49,7 +47,9 @@ revenue = [
         x=x,
         y=[w.revenue if ok else None for w, ok in zip(s.weeks, full, strict=True)],
         name="Revenue",
+        mode="lines+markers",
         line={"color": BLUE, "width": 2},
+        marker={"size": 4},
         hovertemplate="£%{y:,.0f}",
         connectgaps=False,
     ),
@@ -57,7 +57,9 @@ revenue = [
         x=x,
         y=[w.net_revenue if ok else None for w, ok in zip(s.weeks, full, strict=True)],
         name="After cancellations",
+        mode="lines+markers",
         line={"color": MUTED, "width": 2, "dash": "dash"},
+        marker={"size": 4},
         hovertemplate="£%{y:,.0f}",
         connectgaps=False,
     ),
@@ -65,17 +67,17 @@ revenue = [
 notes: list[dict[str, object]] = []
 if partial is not None and s.weeks[partial].revenue > 0:
     p = s.weeks[partial]
-    span = s.weeks[max(partial - 1, 0) : partial + 1]
+    joined = {partial} | ({partial - 1} if partial > 0 and full[partial - 1] else set())
     revenue.append(
         go.Scatter(
-            x=[w.week_start for w in span],
-            y=[w.revenue for w in span],
+            x=x,
+            y=[w.revenue if i in joined else None for i, w in enumerate(s.weeks)],
             name="Partial week",
             mode="lines+markers",
             line={"color": BLUE, "width": 2, "dash": "dot"},
             marker={
                 "symbol": "circle-open",
-                "size": [0] * (len(span) - 1) + [11],
+                "size": [11 if i == partial else 0 for i in range(len(s.weeks))],
                 "color": BLUE,
                 "line": {"width": 2},
             },
@@ -97,12 +99,12 @@ if partial is not None and s.weeks[partial].revenue > 0:
     )
 revenue.append(
     go.Scatter(
-        x=[w.week_start for w in flagged],
-        y=[w.revenue for w in flagged],
+        x=x,
+        y=[w.revenue if m else None for w, m in zip(s.weeks, marked, strict=True)],
         name="Flagged week",
         mode="markers",
         marker={"color": AMBER, "size": 9, "symbol": "diamond"},
-        customdata=[", ".join(FLAG_LABELS[f.rule] for f in w.flags) for w in flagged],
+        customdata=[", ".join(FLAG_LABELS[f.rule] for f in w.flags) for w in s.weeks],
         hovertemplate="%{customdata}",
     )
 )
@@ -165,7 +167,9 @@ with bottom_right:
                     for w, ok in zip(s.weeks, sold, strict=True)
                 ],
                 name="Cancellation rate",
+                mode="lines+markers",
                 line={"color": BLUE, "width": 2},
+                marker={"size": 4},
                 hovertemplate="%{y:.1f}%",
                 connectgaps=False,
             )
