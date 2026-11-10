@@ -1,4 +1,4 @@
-"""AC-35 — Given the committed data, then `run_scenario(...).data_end` is 2011-12-09, and `kpi.models.FLAG_LABELS` is exactly {no_data: "No sales", partial_week: "Partial week", revenue_swing: "Revenue swing", orders_swing: "Orders swing", large_cancellations: "Large cancellations", top_line: "One big order"}."""
+"""AC-35 — Given the committed data, then `run_scenario(...).data_end` is 2011-12-09, and `kpi.models.FLAG_LABELS` is exactly {no_data: "No sales", partial_week: "Partial week", revenue_swing: "Revenue swing", orders_swing: "Orders swing", large_cancellations: "Large cancellations", top_line: "One big order", placed_cancelled: "Placed and cancelled"}."""
 
 from datetime import date
 from typing import Any
@@ -25,4 +25,5 @@ def test_ac_35_data_end_and_flag_labels() -> None:
         "orders_swing": "Orders swing",
         "large_cancellations": "Large cancellations",
         "top_line": "One big order",
+        "placed_cancelled": "Placed and cancelled",
     }

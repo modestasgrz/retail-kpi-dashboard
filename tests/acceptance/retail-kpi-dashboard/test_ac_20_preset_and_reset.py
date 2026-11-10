@@ -1,4 +1,4 @@
-"""AC-20 — Given the app on defaults, preset "UK only" makes Overview "Revenue" equal money() of the core's UK revenue for 2011-11-28 and differ from "£309 378"; Reset restores preset "Full year", country "All countries", week 2011-11-28, "Revenue" "£309 378"."""
+"""AC-20 — Given the app on defaults, when preset "UK only" is chosen, then the Overview "Net revenue" metric equals `money()` of the core's United Kingdom net revenue for 2011-11-28 and differs from "£306 112"; when Reset is clicked, then preset is "Full year", country "All countries", week 2011-11-28 and "Net revenue" shows "£306 112" again."""
 
 from datetime import date
 
@@ -20,10 +20,10 @@ def test_ac_20_preset_and_reset() -> None:
     at = app()
     at.selectbox(key="preset").select("UK only").run()
     assert not at.exception
-    assert metric(at, "Revenue").value == money(uk.selected.revenue)
-    assert metric(at, "Revenue").value != f"£309{S}378"
+    assert metric(at, "Net revenue").value == money(uk.selected.net_revenue)
+    assert metric(at, "Net revenue").value != f"£306{S}112"
     at.button(key="reset").click().run()
     assert at.selectbox(key="preset").value == "Full year"
     assert at.selectbox(key="country").value == "All countries"
     assert at.selectbox(key="week").value == week
-    assert metric(at, "Revenue").value == f"£309{S}378"
+    assert metric(at, "Net revenue").value == f"£306{S}112"

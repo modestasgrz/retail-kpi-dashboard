@@ -1,4 +1,4 @@
-"""AC-19 — Given the committed data, app.py in AppTest with no input: no exception; each of the 5 DEC-09 pages opens via switch_page with no exception and shows its title; sidebar preset "Full year", country "All countries", week 2011-11-28; Overview "Revenue" shows "£309 378" with delta "+2.3%"."""
+"""AC-19 — Given the committed data, when `app.py` runs in AppTest with no input, then there is no exception, each of the 5 pages of DEC-09 opens via `switch_page(<file>)` with no exception and shows its title as `st.title`, the sidebar preset is "Full year", country "All countries", week 2011-11-28 (the last full week; 2011-12-05 is partial), and the Overview metric "Net revenue" shows "£306 112" with delta "+3.7%"."""
 
 from datetime import date
 
@@ -20,9 +20,9 @@ def test_ac_19_app_defaults() -> None:
     assert at.selectbox(key="preset").value == "Full year"
     assert at.selectbox(key="country").value == "All countries"
     assert at.selectbox(key="week").value == date(2011, 11, 28)
-    revenue = metric(at, "Revenue")
-    assert revenue.value == f"£309{S}378"
-    assert revenue.delta == "+2.3%"
+    revenue = metric(at, "Net revenue")
+    assert revenue.value == f"£306{S}112"
+    assert revenue.delta == "+3.7%"
     assert at.title[0].value == "Overview"
     for path, title in PAGES:
         at.switch_page(path).run()

@@ -1,4 +1,4 @@
-"""AC-28 — Methodology & data shows "Chen, D. (2012)", "CC BY 4.0", "https://doi.org/10.24432/C5CG6D", the formula of each of the 10 card KPIs, each flag rule of DEC-08, and "All figures come from real public data; nothing in this app is synthetic."; the sidebar of every page shows "Data: UCI Online Retail II (Chen 2012), CC BY 4.0"."""
+"""AC-28 — Given the app, when Methodology & data is opened, then it shows "Chen, D. (2012)", "CC BY 4.0", "https://doi.org/10.24432/C5CG6D", the label and formula of each of the 9 card KPIs of DEC-11, each flag rule of DEC-08, the sentences "All figures come from real public data; nothing in this app is synthetic." and "Net revenue is revenue minus cancelled value; it is the headline figure on every page.", the placed-and-cancelled matching rule (text contains "same week, same stock code, same customer and same price") and the driver formula (text contains "contribution"); and the sidebar of every page shows "Data: UCI Online Retail II (Chen 2012), CC BY 4.0"."""
 
 from fixture import app, texts
 
@@ -10,16 +10,15 @@ PAGES = [
     "views/methodology.py",
 ]
 LABELS = [
-    "Revenue",
+    "Net revenue",
     "Orders",
-    "Average order value",
+    "Avg order (net)",
+    "Gross revenue",
     "Units",
     "Customers",
     "New customers",
     "Returning customers",
-    "Cancellation rate",
-    "Cancelled value",
-    "Revenue after cancellations",
+    "Cancelled",
 ]
 RULES = [
     "no_data",
@@ -28,6 +27,7 @@ RULES = [
     "orders_swing",
     "large_cancellations",
     "top_line",
+    "placed_cancelled",
 ]
 
 
@@ -47,6 +47,9 @@ def test_ac_28_methodology_attribution() -> None:
         "CC BY 4.0",
         "https://doi.org/10.24432/C5CG6D",
         "All figures come from real public data; nothing in this app is synthetic.",
+        "Net revenue is revenue minus cancelled value; it is the headline figure on every page.",
+        "same week, same stock code, same customer and same price",
+        "contribution",
         "sum(Quantity × Price)",
     ]:
         assert needle in page, needle

@@ -1,4 +1,4 @@
-"""AC-14 — Given the committed data/derived tables, All countries: week 2011-09-19 and 2011-12-05 match the earlier independent run (values in the spec), and 2011-12-05's set of flag rules is exactly {partial_week, revenue_swing, large_cancellations, top_line}."""
+"""AC-14 — Given the committed `data/derived/` tables, when `run_scenario` runs for All countries, then week 2011-09-19 shows revenue "£328 713", orders "463", AOV "£709.96", customers "383", new customers "64", cancellation rate "17.0%", cancelled value "£8 967", revenue after cancellations "£319 746", product lines 13 181, lines without customer id 2 517, revenue change "+46.8%"; and week 2011-12-05 shows revenue "£483 725", orders "509", AOV "£950.34", customers "415", new customers "17", cancellation rate "14.3%", cancelled value "£172 782", revenue after cancellations "£310 943", revenue change "+56.4%", orders change "-23.2%", and its set of flag rules is exactly {`partial_week`, `placed_cancelled`} (round 3: the big order and its cancellation merge, and the swing uses net revenue; KPI values from the earlier independent run in `_saved-runs/kpi-backfill2`)."""
 
 from datetime import date
 from typing import Any
@@ -40,9 +40,4 @@ def test_ac_14_real_data_matches_saved_run() -> None:
     assert money(b.net_revenue) == f"£310{S}943"
     assert change(b.revenue_wow) == "+56.4%"
     assert change(b.orders_wow) == "-23.2%"
-    assert {f.rule for f in b.flags} == {
-        "partial_week",
-        "revenue_swing",
-        "large_cancellations",
-        "top_line",
-    }
+    assert {f.rule for f in b.flags} == {"partial_week", "placed_cancelled"}

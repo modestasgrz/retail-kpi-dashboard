@@ -1,19 +1,18 @@
-"""AC-40 — Given the app on defaults, then the metrics "Revenue", "Orders" and "Average order value" have `chart_data` equal to the core's values for the 12 weeks ending at the selected week (2011-09-12 .. 2011-11-28; weeks with no value skipped), and the other 7 card metrics have no chart data; on preset "Q4 2011" the sparkline holds the 9 weeks 2011-10-03 .. 2011-11-28."""
+"""AC-40 — Given the app on defaults, then the metrics "Net revenue", "Orders" and "Avg order (net)" have `chart_data` equal to the core's `net_revenue`, `orders` and `net_aov` for the 12 weeks ending at the selected week (2011-09-12 .. 2011-11-28; weeks with no value skipped), and the other 6 card metrics have no chart data; on preset "Q4 2011" the sparkline holds the 9 weeks 2011-10-03 .. 2011-11-28."""
 
 from datetime import date
 
 import pytest
 from fixture import REPO, app, metric
 
-BIG = {"Revenue": "revenue", "Orders": "orders", "Average order value": "aov"}
+BIG = {"Net revenue": "net_revenue", "Orders": "orders", "Avg order (net)": "net_aov"}
 SMALL = [
+    "Gross revenue",
     "Units",
     "Customers",
     "New customers",
     "Returning customers",
-    "Cancellation rate",
-    "Cancelled value",
-    "Revenue after cancellations",
+    "Cancelled",
 ]
 
 
