@@ -42,7 +42,9 @@ def flag_line(flag: Flag, template: str) -> str:
             else:
                 n = rounded(abs(i.change), "0.1")
                 n = n.to_integral_value() if n == n.to_integral_value() else n
-                items.append(f"{i.label} {sign}{grouped(n)} orders")
+                items.append(
+                    f"{i.label} {sign}{grouped(n)} order{'' if n == 1 else 's'}"
+                )
         lines.append(
             f"    - Top {PLURAL[d.by]}: {' · '.join(items)} ({pct(d.explained_pct)} of the change)"
         )
