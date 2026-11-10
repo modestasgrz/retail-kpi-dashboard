@@ -11,10 +11,13 @@ GREEN = "#22C55E"
 AMBER = "#F59E0B"
 RED = "#EF4444"
 FONT = '"Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif'
-NEW = "#d95926"
+META = "#A3B1C8"
+RETURNING = "#2563EB"
+NEW = "#0AA2C0"
 SERIES = [BLUE, NEW]
 
 axis = {
+    "showgrid": True,
     "gridcolor": BORDER,
     "linecolor": BORDER,
     "zeroline": False,
@@ -23,11 +26,11 @@ axis = {
 }
 TEMPLATE = go.layout.Template(
     layout={
-        "paper_bgcolor": SURFACE,
-        "plot_bgcolor": SURFACE,
+        "paper_bgcolor": BG,
+        "plot_bgcolor": BG,
         "font": {"family": FONT, "color": TEXT, "size": 13},
         "colorway": SERIES,
-        "xaxis": axis,
+        "xaxis": {**axis, "showgrid": False},
         "yaxis": axis,
         "hovermode": "x unified",
         "hoverlabel": {
@@ -35,7 +38,14 @@ TEMPLATE = go.layout.Template(
             "bordercolor": BORDER,
             "font": {"color": TEXT, "family": FONT},
         },
-        "legend": {"orientation": "h", "y": 1.12, "x": 0, "font": {"color": MUTED}},
+        "legend": {
+            "orientation": "h",
+            "y": 1.02,
+            "yanchor": "bottom",
+            "x": 1,
+            "xanchor": "right",
+            "font": {"color": MUTED},
+        },
         "margin": {"l": 56, "r": 16, "t": 48, "b": 40},
         "title": {"font": {"size": 15, "color": TEXT}, "x": 0, "xanchor": "left"},
         "bargap": 0.25,

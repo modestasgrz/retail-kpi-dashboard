@@ -1,5 +1,7 @@
-html, body, p, li, label, input, button, h1, h2, h3, h4, td, th, [data-testid="stMarkdownContainer"] {
+html, body, p, li, label, input, button, h1, h2, h3, h4, h5, h6, td, th,
+[data-testid="stMarkdownContainer"], [data-testid="stMetricValue"] {
   font-family: "Inter", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 .block-container { padding-top: 2.2rem; padding-bottom: 3rem; max-width: 1360px; }
 h1 { font-weight: 650; letter-spacing: -0.01em; }
@@ -8,11 +10,16 @@ h1 { font-weight: 650; letter-spacing: -0.01em; }
   border: 1px solid #22324F;
   border-radius: 10px;
   padding: 14px 16px;
-  min-height: 136px;
 }
 [data-testid="stMetricLabel"] p,
-[data-testid="stMetricLabel"] div { color: #8B9AB4; font-size: 0.85rem; white-space: normal; overflow: visible; text-overflow: clip; }
-[data-testid="stMetricValue"] { font-variant-numeric: tabular-nums; font-size: 1.6rem; }
+[data-testid="stMetricLabel"] div { color: #A3B1C8; font-size: 0.85rem; white-space: normal; overflow: visible; text-overflow: clip; }
+.st-key-big [data-testid="stMetric"] { min-height: 196px; }
+.st-key-big [data-testid="stMetricValue"] { font-size: 2.1rem; }
+.st-key-small [data-testid="stMetric"] { min-height: 124px; padding: 10px 10px; }
+.st-key-small [data-testid="stMetricValue"] { font-size: 1.1rem; }
+.st-key-small [data-testid="stMetricLabel"] p { font-size: 0.74rem; word-break: normal; overflow-wrap: normal; hyphens: none; }
 [data-testid="stSidebar"] { border-right: 1px solid #22324F; }
-[data-testid="stCaptionContainer"] { color: #8B9AB4; }
-.st-key-strip [data-testid="stMetric"] { background: #0B1426; min-height: 0; }
+[data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p { color: #A3B1C8; }
+.st-key-asof [data-testid="stCaptionContainer"], .st-key-pill [data-testid="stMarkdownContainer"] { text-align: right; }
+.st-key-small [data-testid="stMetricDelta"] { font-size: 0.72rem; }
+.st-key-small [data-testid="stMetricDelta"] div { overflow: visible; text-overflow: clip; }

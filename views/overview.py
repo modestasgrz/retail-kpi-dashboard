@@ -1,25 +1,40 @@
 from collections.abc import Callable
+from datetime import timedelta
+from string import capwords
 from typing import Literal, cast
 
 import pandas as pd
 import streamlit as st
 
 from kpi.fmt import change, count, money, money2, pct, points
-from kpi.models import ALL
+from kpi.models import ALL, FLAG_LABELS
 from views.ui import header
+
+LABEL = "Weekly summary written by AI in an earlier run; every figure was checked against the computed numbers. This app makes no AI calls."
 
 s = header("Overview")
 w = s.selected
+if s.filters.country == ALL and s.summary is not None:
+    st.markdown(s.summary.headline.replace('"', ""))
 
-if w.flags:
-    for flag in w.flags:
-        st.warning(
-            f"**{flag.rule.replace('_', ' ').capitalize()}** · {flag.reason}",
-            icon=":material/flag:",
+week, pill = st.columns([4, 1], vertical_alignment="center")
+week.markdown(
+    f"#### Week {w.week_start} – {w.week_start + timedelta(days=6)} · {s.filters.country}"
+)
+n = len(w.flags)
+with pill.container(key="pill"):
+    st.markdown(
+        f":orange-badge[▲ {n} flag{'s' if n > 1 else ''}]"
+        if n
+        else ":green-badge[● All clear]"
+    )
+if n:
+    with st.expander("Flag details"):
+        st.markdown(
+            "\n".join(f"- **{FLAG_LABELS[f.rule]}** · {f.reason}" for f in w.flags)
         )
-else:
-    st.success("No flags this week.", icon=":material/check_circle:")
 
+recent = [x for x in s.weeks if x.week_start <= w.week_start][-12:]
 cards: list[tuple[str, str, str, str, Literal["normal", "inverse"]]] = [
     ("Revenue", money(w.revenue), change(w.revenue_wow), "revenue", "normal"),
     ("Orders", count(w.orders), change(w.orders_wow), "orders", "normal"),
@@ -62,26 +77,32 @@ cards: list[tuple[str, str, str, str, Literal["normal", "inverse"]]] = [
         "normal",
     ),
 ]
-st.subheader("Selected week vs previous week")
-for row in (cards[:5], cards[5:]):
-    for col, (label, value, delta, key, color) in zip(st.columns(5), row, strict=True):
-        none = delta == "n/a"
-        col.metric(
-            label,
-            value,
-            delta,
-            delta_color="off" if none else color,
-            delta_arrow="off" if none else "auto",
-            help=s.sources[key],
-        )
+for key, row in (("big", cards[:3]), ("small", cards[3:])):
+    with st.container(key=key):
+        for col, (label, value, delta, k, color) in zip(
+            st.columns(len(row), gap="small"), row, strict=True
+        ):
+            none = delta == "n/a"
+            col.metric(
+                label,
+                value,
+                delta,
+                delta_color="off" if none else color,
+                delta_arrow="off" if none else "auto",
+                help=s.sources[k],
+                chart_data=[v for x in recent if (v := getattr(x, k)) is not None]
+                if key == "big"
+                else None,
+                chart_type="line",
+            )
 st.caption(
-    "Hover the ? on a card for its formula and inputs. A change shows n/a when the previous week had no base to compare with."
+    f"Changes are vs the previous week; the lines show the last {len(recent)} weeks in range. Hover the ? on a card for its formula and inputs. A change shows n/a when the previous week had no base to compare with."
 )
 
 left, right = st.columns(2)
-for col, title, rows in (
-    (left, "Top 5 products", s.top_products),
-    (right, "Top 5 countries", s.top_countries),
+for col, title, rows, name in (
+    (left, "Top 5 products", s.top_products, capwords),
+    (right, "Top 5 countries", s.top_countries, str),
 ):
     with col:
         st.subheader(title)
@@ -89,17 +110,24 @@ for col, title, rows in (
             st.dataframe(
                 pd.DataFrame(
                     {
-                        "Name": [r.label for r in rows],
+                        "Name": [name(r.label) for r in rows],
                         "Revenue": [r.revenue for r in rows],
+                        "Share of week": [100 * r.revenue / w.revenue for r in rows],
                     }
                 ).style.format({"Revenue": cast(Callable[[object], str], money)}),
                 hide_index=True,
                 width="stretch",
+                column_config={
+                    "Name": st.column_config.TextColumn(width=180),
+                    "Revenue": st.column_config.Column(width=80),
+                    "Share of week": st.column_config.ProgressColumn(
+                        format="%.1f%%", min_value=0, max_value=100, width=130
+                    ),
+                },
             )
         else:
             st.caption("No sales this week.")
 
-st.subheader("Weekly summary")
 if s.filters.country != ALL:
     st.info(
         "The saved weekly summary covers all countries, so it is hidden while a country filter is on."
@@ -107,9 +135,7 @@ if s.filters.country != ALL:
 elif s.summary is None:
     st.caption("No saved summary for this week (no sales).")
 else:
-    st.caption(
-        "Weekly summary written by AI in an earlier run; every figure was checked against the computed numbers. This app makes no AI calls."
-    )
-    with st.container(border=True):
-        st.markdown(f"**{s.summary.headline}**")
-        st.markdown(s.summary.text)
+    with st.expander("Full weekly summary"):
+        st.caption(LABEL)
+        st.markdown(f"**{s.summary.headline.replace('"', '')}**")
+        st.markdown(s.summary.text.replace('"', ""))

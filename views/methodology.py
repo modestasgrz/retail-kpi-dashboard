@@ -34,14 +34,16 @@ Only the remaining **product lines** count towards revenue, orders, units and cu
 
 ### Flag rules
 
-| Rule | Fires when |
-| --- | --- |
-| no_data | the week has no product lines |
-| partial_week | the data ends before the week's Sunday (2011-12-09) |
-| revenue_swing | revenue changed ≥ 25.0% vs the previous week (both weeks with sales) |
-| orders_swing | orders changed ≥ 25.0% vs the previous week (both weeks with sales) |
-| large_cancellations | cancelled value ≥ 25% of revenue |
-| top_line | one product line is more than 25% of the week's revenue |
+| Flag | Rule | Fires when |
+| --- | --- | --- |
+| No sales | no_data | the week has no product lines |
+| Partial week | partial_week | the data ends before the week's Sunday (2011-12-09) |
+| Revenue swing | revenue_swing | revenue is ≥ 40.0% above or below its 4-week average |
+| Orders swing | orders_swing | orders are ≥ 40.0% above or below their 4-week average |
+| Large cancellations | large_cancellations | cancelled value ≥ 25% of revenue |
+| One big order | top_line | one product line is more than 25% of the week's revenue |
+
+The 4-week average is the mean of the previous 4 weeks that had sales. Swing flags skip a week with no sales and the week right after one, since there is nothing fair to compare with. The 40% threshold leaves 9 flagged weeks in the full year for all countries, so each flag is worth a look.
 
 ### Country filter
 
@@ -54,6 +56,10 @@ The Overview shows, for all countries only, a weekly summary written by AI in an
 ### Data
 
 Online Retail II (Chen, D. (2012)), UCI Machine Learning Repository, https://doi.org/10.24432/C5CG6D, licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). A UK-based online retailer of giftware, many of whose customers are wholesalers; transactions from 2009-12-01 to 2011-12-09. This app shows the 53 ISO weeks from 2010-12-06 to 2011-12-11. The raw file is downloaded and checked by a script; only weekly aggregates without customer ids are stored with the app.
+
+### With your data
+
+On your own shop data the same dashboard can add margin, stock and targets, send a Monday email with the week's numbers and flags, and connect directly to your shop or ERP.
 
 ### Known limits
 

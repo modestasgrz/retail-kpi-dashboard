@@ -1,9 +1,19 @@
 from collections import Counter
+from datetime import timedelta
 
-import pandas as pd
 import streamlit as st
 
+from kpi.models import FLAG_LABELS
 from views.ui import header
+
+COLOUR = {
+    "no_data": "gray",
+    "partial_week": "gray",
+    "revenue_swing": "blue",
+    "orders_swing": "blue",
+    "large_cancellations": "orange",
+    "top_line": "orange",
+}
 
 s = header("Flagged weeks")
 if not s.flags:
@@ -12,22 +22,20 @@ if not s.flags:
     )
 else:
     counts = Counter(f.rule for f in s.flags)
-    st.caption(
-        " · ".join(f"{rule.replace('_', ' ')}: {n}" for rule, n in counts.items())
-    )
-    st.dataframe(
-        pd.DataFrame(
-            {
-                "Week": [str(f.week_start) for f in s.flags],
-                "Flag": [f.rule for f in s.flags],
-                "Reason": [f.reason for f in s.flags],
-            }
-        ),
-        hide_index=True,
-        width="stretch",
-        height=min(35 * len(s.flags) + 38, 640),
-        column_config={"Reason": st.column_config.TextColumn(width="large")},
-    )
+    st.caption(" · ".join(f"{FLAG_LABELS[rule]}: {n}" for rule, n in counts.items()))
+    for w in s.weeks:
+        if not w.flags:
+            continue
+        with st.container(border=True):
+            st.markdown(
+                f"**{w.week_start} – {w.week_start + timedelta(days=6)}** "
+                + " ".join(
+                    f":{COLOUR[f.rule]}-badge[{FLAG_LABELS[f.rule]}]" for f in w.flags
+                )
+            )
+            st.markdown(
+                "\n".join(f"- **{FLAG_LABELS[f.rule]}:** {f.reason}" for f in w.flags)
+            )
 st.caption(
     "Rules: see Methodology & data. A flag asks for a look; it is not an error in the data."
 )
