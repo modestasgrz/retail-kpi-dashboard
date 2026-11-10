@@ -45,15 +45,6 @@ COLOUR = {
     "top_line": "orange",
     "placed_cancelled": "orange",
 }
-SHORT_LABELS = {
-    "no_data": "No sales",
-    "partial_week": "Partial",
-    "revenue_swing": "Revenue",
-    "orders_swing": "Orders",
-    "large_cancellations": "Cancels",
-    "top_line": "Big line",
-    "placed_cancelled": "Placed+cancelled",
-}
 SHORT = (date(2011, 3, 7), date(2011, 4, 25))
 CALM = (date(2011, 1, 24), date(2011, 4, 18))
 
@@ -430,7 +421,7 @@ def test_flag_groups_colours_order_and_lines(
     start, end = span or (FIRST_WEEK, LAST_WEEK)
     at = open_app(country, span, None, "flags")
     s = scen(country, chosen(at), start, end)
-    flagged = [w for w in s.weeks if w.flags]
+    flagged = [w for w in reversed(s.weeks) if w.flags]
     vals = markdowns(at)
     heads = [v for v in vals if v.startswith("**20")]
     assert heads == [
@@ -438,7 +429,7 @@ def test_flag_groups_colours_order_and_lines(
         + " ".join(f":{COLOUR[f.rule]}-badge[{FLAG_LABELS[f.rule]}]" for f in w.flags)
         for w in flagged
     ]
-    assert [h[2:12] for h in heads] == sorted(h[2:12] for h in heads)
+    assert [h[2:12] for h in heads] == sorted((h[2:12] for h in heads), reverse=True)
     lists = [vals[vals.index(h) + 1] for h in heads]
     for listed, w in zip(lists, flagged, strict=True):
         top = [line for line in listed.split("\n") if not line.startswith(" ")]
@@ -514,7 +505,7 @@ def test_table_rows_flags_and_pinning(
     assert len(df) == len(s.weeks)
     assert df["Week"].astype(str).tolist() == [str(w.week_start) for w in s.weeks]
     assert df["Flags"].tolist() == [
-        ", ".join(SHORT_LABELS[f.rule] for f in w.flags) for w in s.weeks
+        ", ".join(FLAG_LABELS[f.rule] for f in w.flags) for w in s.weeks
     ]
     cols = json.loads(frame(at).proto.columns)
     assert cols["Week"]["pinned"] is True

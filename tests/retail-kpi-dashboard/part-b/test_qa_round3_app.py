@@ -47,15 +47,6 @@ AI_HEADLINE = (
     "Revenue and orders jump to an unusually strong week, led by pantry products"
 )
 SHORT = (date(2011, 3, 7), date(2011, 4, 25))
-FLAG_SHORT = {
-    "no_data": "No sales",
-    "partial_week": "Partial",
-    "revenue_swing": "Revenue",
-    "orders_swing": "Orders",
-    "large_cancellations": "Cancels",
-    "top_line": "Big line",
-    "placed_cancelled": "Placed+cancelled",
-}
 
 
 @pytest.fixture(autouse=True)
@@ -471,9 +462,9 @@ def expected_item_lines(flag: Flag) -> list[str]:
                 amount = money(abs(i.change))
             else:
                 q = Decimal(str(round(abs(i.change), 9))).quantize(
-                    Decimal("0.1"), ROUND_HALF_UP
+                    Decimal(1), ROUND_HALF_UP
                 )
-                amount = f"{grouped(q.to_integral_value() if q == q.to_integral_value() else q)} orders"
+                amount = f"{grouped(q)} order{'' if q == 1 else 's'}"
             parts.append(f"{i.label} {sign}{amount}")
         what = "products" if d.by == "product" else "countries"
         lines.append(
@@ -522,17 +513,17 @@ def test_known_driver_lines_signs_and_numbers() -> None:
 def test_orders_format_whole_versus_decimal_and_half_up() -> None:
     may = details_text(open_app(ALL, None, date(2011, 5, 9)))
     assert "Germany +5 orders" in may
-    assert "France +6.3 orders" in may
-    assert "United Kingdom +111.3 orders" in may
-    assert ".0 orders" not in may
+    assert "France +6 orders" in may
+    assert "United Kingdom +111 orders" in may
+    assert not re.search(r"\d\.\d orders?", may)
     dec = details_text(open_app(ALL, None, date(2010, 12, 20)))
-    assert "United Kingdom -393.8 orders" in dec
-    assert "Germany -6.8 orders" in dec
-    assert "EIRE -3.5 orders" in dec
+    assert "United Kingdom -394 orders" in dec
+    assert "Germany -7 orders" in dec
+    assert "EIRE -4 orders" in dec
 
 
 def test_every_orders_driver_line_matches_format_everywhere() -> None:
-    pattern = re.compile(r"^.+ [+-][\d ]+(\.\d)? orders$")
+    pattern = re.compile(r"^.+ [+-][\d\u202f]+ orders?$")
     seen = 0
     for country in (ALL, OUTSIDE_UK):
         for w in scen(country).weeks:
@@ -543,7 +534,7 @@ def test_every_orders_driver_line_matches_format_everywhere() -> None:
                     body = line.split(": ", 1)[1].rsplit(" (", 1)[0]
                     for item in body.split(" · "):
                         assert pattern.match(item), item
-                        assert ".0 orders" not in item
+                        assert not re.search(r"\.\d", item)
                         seen += 1
     assert seen > 10
 
@@ -606,7 +597,7 @@ def test_flagged_weeks_list_with_driver_lines_equals_expected(country: str) -> N
     s = scen(country)
     vals = markdowns(at)
     heads = [v for v in vals if v.startswith("**20")]
-    flagged = [w for w in s.weeks if w.flags]
+    flagged = [w for w in reversed(s.weeks) if w.flags]
     assert len(heads) == len(flagged)
     for head, w in zip(heads, flagged, strict=True):
         assert vals[vals.index(head) + 1] == expected_list(
@@ -770,16 +761,16 @@ def test_change_columns_and_net_yoy_match_core() -> None:
     assert pd.isna(df["Net vs last year"].iloc[-1])
 
 
-def test_flag_column_short_labels_for_two_flag_week() -> None:
+def test_flag_column_full_labels_for_two_flag_week() -> None:
     at = open_app(ALL, None, None, "table")
     df = frame(at).value
-    assert df["Flags"].tolist()[-1] == "Partial, Placed+cancelled"
+    assert df["Flags"].tolist()[-1] == "Partial week, Placed and cancelled"
     toggled(at, "all_weeks")
     flags = frame(at).value["Flags"].tolist()
     s = scen()
-    assert flags == [", ".join(FLAG_SHORT[f.rule] for f in w.flags) for w in s.weeks]
+    assert flags == [", ".join(FLAG_LABELS[f.rule] for f in w.flags) for w in s.weeks]
     assert (
-        "Placed+cancelled"
+        "Placed and cancelled"
         in flags[
             s.weeks.index(next(w for w in s.weeks if w.week_start == date(2011, 1, 17)))
         ]
@@ -1026,15 +1017,15 @@ NET_CASES = [
 
 
 @pytest.mark.parametrize(("country", "week"), NET_CASES)
-def test_same_net_revenue_on_card_headline_trends_and_table(
+def test_same_net_revenue_on_card_core_headline_trends_and_table(
     country: str, week: date
 ) -> None:
     s = scen(country, week)
     w = s.selected
     at = open_app(country, None, week)
     assert metric(at, "Net revenue").value == money(w.net_revenue)
-    assert any(s.headline in m for m in markdowns(at))
     if w.product_lines > 0:
+        assert not any(s.headline in m for m in markdowns(at))
         assert f"Net revenue {money(w.net_revenue)}" in s.headline
     assert f"net revenue {money(s.totals.net_revenue)} " in " ".join(
         str(c.value) for c in at.main.caption
