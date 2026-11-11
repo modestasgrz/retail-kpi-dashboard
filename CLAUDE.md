@@ -1,5 +1,7 @@
 # retail-kpi-dashboard
 
+Read `docs/HISTORY.md` first: current state, every decision and why, review rounds, known limits, gotchas, how to resume.
+
 Weekly retail KPI dashboard (Streamlit) over 53 weeks of the public UCI Online Retail II data. Every number is computed in code from committed derived tables; no network calls and no AI calls at runtime.
 
 ## Stack

@@ -1,6 +1,6 @@
 # Deploy to Streamlit Community Cloud (owner step, not done yet)
 
-Status: prepared, not deployed. The repo is public.
+Status: deployed 11 Nov 2026 at https://retail-kpi-dashboard.streamlit.app. The repo is public.
 
 ## What's already in place
 
