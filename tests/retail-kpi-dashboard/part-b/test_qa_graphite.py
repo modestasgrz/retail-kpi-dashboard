@@ -7,6 +7,7 @@ import re
 import tomllib
 from collections.abc import Iterator
 from datetime import date, timedelta
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
@@ -118,17 +119,67 @@ def sunday(d: date) -> date:
     return d + timedelta(days=6)
 
 
+def half_up(value: float, places: str) -> Decimal:
+    return Decimal(repr(round(value, 9))).quantize(Decimal(places), ROUND_HALF_UP)
+
+
+def spaced(d: Decimal) -> str:
+    return f"{d:,}".replace(",", "\u202f")
+
+
+def signed_pct(value: float) -> str:
+    d = half_up(value, "0.1")
+    return f"{'-' if d < 0 else '+'}{spaced(abs(d))}%"
+
+
+CARD_FIELDS = (
+    ("Net revenue", "net_revenue_wow"),
+    ("Orders", "orders_wow"),
+    ("Avg order (net)", "net_aov_wow"),
+    ("Gross revenue", "revenue_wow"),
+    ("Units", "units_wow"),
+    ("Customers", "customers_wow"),
+    ("New customers", "new_customers_wow"),
+    ("Returning customers", "returning_customers_wow"),
+    ("Cancelled", "cancelled_value_wow"),
+)
+
+
+def biggest_move_text(w: Any) -> str:
+    moves = [
+        (label, getattr(w, field))
+        for label, field in CARD_FIELDS
+        if getattr(w, field) is not None and label != "Cancelled"
+    ]
+    if not moves:
+        return "No comparison with last week."
+    shown = [abs(half_up(v, "0.1")) for _, v in moves]
+    top = max(shown)
+    i = shown.index(top)
+    text = f"Biggest move vs last week: {moves[i][0]} {signed_pct(moves[i][1])}"
+    rest = shown[:i] + shown[i + 1 :]
+    return text + (
+        f"; the other cards moved within ±{spaced(max(rest))}%." if rest else "."
+    )
+
+
+def ordinal(n: int) -> str:
+    if n % 100 in (11, 12, 13):
+        return f"{n}th"
+    return f"{n}{({1: 'st', 2: 'nd', 3: 'rd'}).get(n % 10, 'th')}"
+
+
 def expected_strip(page: str, s: Any, all_weeks: bool = False) -> tuple[str, str]:
     """RIGHT NOW and DO THIS from the DEC-30 wording and the core numbers."""
     if page == "overview":
         w = s.selected
         if w.product_lines == 0:
-            do = "No sales this week. Pick another week in the sidebar."
-        elif w.flags:
-            do = f"Open Flag details below: {', '.join(FLAG_LABELS[f.rule] for f in w.flags)}."
+            return "No sales this week.", "Pick another week in the sidebar."
+        if w.flags:
+            do = f"Read the flag details below: {', '.join(FLAG_LABELS[f.rule] for f in w.flags)}."
         else:
             do = "Nothing flagged. Scan the top products and countries, then switch weeks in the sidebar."
-        return s.headline, do
+        return biggest_move_text(w), do
     if page == "trends":
         full = [
             w
@@ -138,10 +189,21 @@ def expected_strip(page: str, s: Any, all_weeks: bool = False) -> tuple[str, str
         do = "Switch Net / Gross to see what cancellations took out; amber diamonds are flagged weeks."
         if not full:
             return "No full week with sales in this range.", do
+        sel = s.selected
         hi = max(full, key=lambda w: w.net_revenue)
-        lo = min(full, key=lambda w: w.net_revenue)
+        if sel in full:
+            rank = 1 + sum(w.net_revenue > sel.net_revenue for w in full)
+            return (
+                f"Week {sel.week_start}: net revenue {money(sel.net_revenue)}, the {ordinal(rank)} highest of {len(full)} full week{'s' if len(full) > 1 else ''} in range.",
+                do,
+            )
+        state = (
+            "had no sales"
+            if sel.product_lines == 0
+            else "is partial, so it isn't ranked"
+        )
         return (
-            f"Net revenue in range {money(s.totals.net_revenue)}; highest full week {hi.week_start} ({money(hi.net_revenue)}), lowest {lo.week_start} ({money(lo.net_revenue)}).",
+            f"Week {sel.week_start} {state}; highest full week {hi.week_start} ({money(hi.net_revenue)}).",
             do,
         )
     if page == "flags":
@@ -154,15 +216,19 @@ def expected_strip(page: str, s: Any, all_weeks: bool = False) -> tuple[str, str
         parts = " · ".join(
             f"{FLAG_LABELS[r]} {rules.count(r)}" for r in dict.fromkeys(rules)
         )
+        swing = {"revenue_swing", "orders_swing"} & set(rules)
+        plural = "s" if len(s.weeks) > 1 else ""
         return (
-            f"{s.totals.flagged_weeks} of {s.totals.weeks} weeks flagged: {parts}.",
-            "Read each reason; for swings, the drivers show which products and countries moved.",
+            f"{s.totals.flagged_weeks} of {s.totals.weeks} week{plural} flagged: {parts}.",
+            "Read each reason; for swings, the drivers show which products and countries moved."
+            if swing
+            else "Read each reason.",
         )
     n = len(s.weeks)
     every = all_weeks or n <= 8
     shown = s.weeks if every else s.weeks[-8:]
     return (
-        f"Showing {'all' if every else 'the last 8'} of {n} weeks, {shown[0].week_start} – {sunday(shown[-1].week_start)}.",
+        f"Showing {'all' if every else 'the last 8'} of {n} week{'s' if n > 1 else ''}, {shown[0].week_start} – {sunday(shown[-1].week_start)}.",
         "Switch on Show changes for week and year comparisons; Download CSV has every week.",
     )
 
@@ -240,7 +306,7 @@ def test_strip_changes_with_the_selected_week() -> None:
     at.selectbox(key="week").select(date(2011, 9, 19)).run()
     second = read_strip(at)["RIGHT NOW"]
     assert first != second
-    assert second == scen(ALL, date(2011, 9, 19)).headline
+    assert second == biggest_move_text(scen(ALL, date(2011, 9, 19)).selected)
 
 
 @pytest.mark.parametrize("page", DATA_PAGES)
@@ -278,19 +344,16 @@ def test_strip_is_html_escaped() -> None:
         assert "<" not in body and ">" not in body
 
 
-def test_overview_headline_is_not_its_own_markdown() -> None:
+def test_overview_headline_is_not_shown_anywhere() -> None:
     at = open_app()
     headline = scen().headline
-    assert [m for m in at.markdown if str(m.value) == headline] == []
-    assert headline in strips(at)[0]
+    assert not [m for m in at.markdown if headline in str(m.value)]
+    assert not [e for e in at.expander if headline in str(e.label)]
 
 
 def test_overview_no_sales_week_do_this_exact() -> None:
     at = open_app(week=NO_SALES_WEEK)
-    assert (
-        read_strip(at)["DO THIS"]
-        == "No sales this week. Pick another week in the sidebar."
-    )
+    assert read_strip(at)["DO THIS"] == "Pick another week in the sidebar."
     assert read_strip(at)["RIGHT NOW"] == "No sales this week."
 
 
@@ -298,7 +361,7 @@ def test_overview_do_this_lists_all_flags_in_order() -> None:
     at = open_app(week=date(2011, 12, 5))
     assert (
         read_strip(at)["DO THIS"]
-        == "Open Flag details below: Partial week, Placed and cancelled."
+        == "Read the flag details below: Partial week, Placed and cancelled."
     )
 
 
@@ -316,7 +379,7 @@ def test_flags_page_calm_range() -> None:
 
 def test_flags_page_single_flag_type_has_no_trailing_separator() -> None:
     at = open_app(week=NO_SALES_WEEK, span=(NO_SALES_WEEK, NO_SALES_WEEK), page="flags")
-    assert read_strip(at)["RIGHT NOW"] == "1 of 1 weeks flagged: No sales 1."
+    assert read_strip(at)["RIGHT NOW"] == "1 of 1 week flagged: No sales 1."
 
 
 def test_trends_no_full_week_partial_only() -> None:
@@ -330,19 +393,19 @@ def test_trends_no_full_week_no_sales_only() -> None:
     assert read_strip(at)["RIGHT NOW"] == "No full week with sales in this range."
 
 
-def test_trends_single_full_week_is_both_highest_and_lowest() -> None:
+def test_trends_single_full_week_is_ranked_first_of_one() -> None:
     wk = date(2011, 6, 6)
     at = open_app(span=(wk, wk), page="trends")
     net = money(scen(ALL, wk, wk, wk).selected.net_revenue)
     assert read_strip(at)["RIGHT NOW"] == (
-        f"Net revenue in range {net}; highest full week {wk} ({net}), lowest {wk} ({net})."
+        f"Week {wk}: net revenue {net}, the 1st highest of 1 full week in range."
     )
 
 
 def test_trends_default_is_acceptance_text() -> None:
     at = open_app(page="trends")
     assert read_strip(at)["RIGHT NOW"] == (
-        "Net revenue in range £9 593 707; highest full week 2011-11-14 (£369 126), lowest 2011-04-25 (£81 431)."
+        "Week 2011-11-28: net revenue £306 112, the 4th highest of 51 full weeks in range."
     )
 
 
@@ -356,7 +419,7 @@ def test_trends_gross_toggle_does_not_change_strip() -> None:
 @pytest.mark.parametrize(
     ("span", "text"),
     [
-        ((LAST_WEEK, LAST_WEEK), "Showing all of 1 weeks, 2011-12-05 – 2011-12-11."),
+        ((LAST_WEEK, LAST_WEEK), "Showing all of 1 week, 2011-12-05 – 2011-12-11."),
         (EIGHT, "Showing all of 8 weeks, 2011-03-07 – 2011-05-01."),
         (NINE, "Showing the last 8 of 9 weeks, 2011-03-14 – 2011-05-08."),
     ],
@@ -511,7 +574,7 @@ def test_flags_column_help_opens_with_plain_sentence() -> None:
     sentence = first_sentence(cols["Flags"]["help"])
     assert (
         sentence
-        == "What was flagged that week, in short; full reasons are on Flagged weeks"
+        == "What was flagged that week; at narrow widths the text may be cut, and the full reasons are on Flagged weeks."
     )
     assert not any(c in sentence for c in FORMULA)
 
@@ -768,7 +831,7 @@ def test_table_strip_and_rows_share_one_slice(name: str, all_weeks: bool) -> Non
     text = read_strip(at)["RIGHT NOW"]
     assert text.endswith(f"{rows[0]} – {sunday(date.fromisoformat(rows[-1]))}.")
     n = len(scenario_of(country, span, week).weeks)
-    assert f"of {n} weeks" in text
+    assert f"of {n} week{'s' if n > 1 else ''}, " in text
     assert (len(rows) == n) == ("all of" in text)
 
 

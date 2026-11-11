@@ -12,12 +12,14 @@ s = header("Flagged weeks")
 counts = Counter(f.rule for f in s.flags)
 strip(
     "Which weeks need a look, and why?",
-    f"{s.totals.flagged_weeks} of {s.totals.weeks} weeks flagged: "
+    f"{s.totals.flagged_weeks} of {s.totals.weeks} week{'s' if s.totals.weeks > 1 else ''} flagged: "
     + " · ".join(f"{FLAG_LABELS[rule]} {n}" for rule, n in counts.items())
     + "."
     if s.flags
     else "No week flagged in this range.",
     "Read each reason; for swings, the drivers show which products and countries moved."
+    if counts.keys() & {"revenue_swing", "orders_swing"}
+    else "Read each reason."
     if s.flags
     else "Widen the date range or pick another country in the sidebar.",
 )
@@ -31,7 +33,7 @@ if not s.flags:
     )
 else:
     with st.container(key="flags"):
-        for w in s.weeks:
+        for w in reversed(s.weeks):
             if not w.flags:
                 continue
             with st.container(border=True):

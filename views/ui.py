@@ -28,9 +28,9 @@ def strip(question: str, now: str, do: str) -> None:
     """The 3-line reading strip under the range line (DEC-30): THE QUESTION, RIGHT NOW, DO THIS."""
     st.markdown(
         '<div class="how-to-read">'
-        f"<div><b>THE QUESTION</b><span>{escape(question)}</span></div>"
-        f'<div><b>RIGHT NOW</b><span class="now">{escape(now)}</span></div>'
-        f"<div><b>DO THIS</b><span>{escape(do)}</span></div>"
+        f"<div><b>THE QUESTION</b><span>{escape(question, quote=False)}</span></div>"
+        f'<div><b>RIGHT NOW</b><span class="now">{escape(now, quote=False)}</span></div>'
+        f"<div><b>DO THIS</b><span>{escape(do, quote=False)}</span></div>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -53,8 +53,7 @@ def flag_line(flag: Flag, template: str) -> str:
             if flag.rule == "revenue_swing":
                 items.append(f"{i.label} {sign}{money(abs(i.change))}")
             else:
-                n = rounded(abs(i.change), "0.1")
-                n = n.to_integral_value() if n == n.to_integral_value() else n
+                n = rounded(abs(i.change), "1")
                 items.append(
                     f"{i.label} {sign}{grouped(n)} order{'' if n == 1 else 's'}"
                 )

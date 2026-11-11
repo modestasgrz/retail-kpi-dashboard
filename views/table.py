@@ -6,19 +6,10 @@ import pandas as pd
 import streamlit as st
 
 from kpi.core import weekly_csv
-from kpi.fmt import change, count, money, rounded
+from kpi.fmt import change, count, money, money2, rounded
+from kpi.models import FLAG_LABELS
 from kpi.theme import BAD, GOOD, SURFACE_2, TEXT
 from views.ui import header, strip
-
-SHORT = {
-    "no_data": "No sales",
-    "partial_week": "Partial",
-    "revenue_swing": "Revenue",
-    "orders_swing": "Orders",
-    "large_cancellations": "Cancels",
-    "top_line": "Big line",
-    "placed_cancelled": "Placed+cancelled",
-}
 
 WIDTH = {
     "Net revenue": 100,
@@ -37,7 +28,7 @@ every = st.session_state.get("all_weeks", False) or len(s.weeks) <= 8
 weeks = s.weeks if every else s.weeks[-8:]
 strip(
     "What are the exact weekly numbers?",
-    f"Showing {'all' if every else 'the last 8'} of {len(s.weeks)} weeks, {weeks[0].week_start} – {weeks[-1].week_start + timedelta(days=6)}.",
+    f"Showing {'all' if every else 'the last 8'} of {len(s.weeks)} week{'s' if len(s.weeks) > 1 else ''}, {weeks[0].week_start} – {weeks[-1].week_start + timedelta(days=6)}.",
     "Switch on Show changes for week and year comparisons; Download CSV has every week.",
 )
 f = s.filters
@@ -59,7 +50,7 @@ columns: dict[str, tuple[str, Callable[..., str]]] = {
     "Gross": ("revenue", money),
     "Orders": ("orders", count),
     "Orders vs last week": ("orders_wow", change),
-    "Avg order (net)": ("net_aov", money),
+    "Avg order (net)": ("net_aov", money2),
     "Units": ("units", count),
     "Customers": ("customers", count),
     "New": ("new_customers", count),
@@ -71,7 +62,7 @@ shown = {name: spec for name, spec in columns.items() if changes or name not in 
 table = pd.DataFrame(
     {
         "Week": [str(w.week_start) for w in weeks],
-        "Flags": [", ".join(SHORT[fl.rule] for fl in w.flags) for w in weeks],
+        "Flags": [", ".join(FLAG_LABELS[fl.rule] for fl in w.flags) for w in weeks],
         **{name: [getattr(w, key) for w in weeks] for name, (key, _) in shown.items()},
     }
 )
@@ -106,7 +97,7 @@ st.dataframe(
         "Week": st.column_config.TextColumn(pinned=True, width=96),
         "Flags": st.column_config.TextColumn(
             width=110,
-            help="What was flagged that week, in short; full reasons are on Flagged weeks. Revenue / Orders = swing vs the 4-week average, Cancels = large cancellations, Big line = one big order, Placed+cancelled = an order cancelled the same week, Partial = partial week.",
+            help="What was flagged that week; at narrow widths the text may be cut, and the full reasons are on Flagged weeks.",
         ),
     },
 )

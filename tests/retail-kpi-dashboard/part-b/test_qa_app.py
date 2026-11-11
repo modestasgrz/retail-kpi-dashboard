@@ -527,7 +527,7 @@ def test_flag_rows_equal_scenario_flags(country: str, start: date, end: date) ->
     s = scen(country, chosen_week(at), start, end)
     values = [str(m.value) for m in at.markdown]
     headings = [v for v in values if v.startswith("**20")]
-    flagged = [w for w in s.weeks if w.flags]
+    flagged = [w for w in reversed(s.weeks) if w.flags]
     assert len(headings) == len(flagged) == s.totals.flagged_weeks
     for heading, w in zip(headings, flagged, strict=True):
         assert heading.startswith(f"**{w.week_start} – ")

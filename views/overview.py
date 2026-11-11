@@ -6,7 +6,7 @@ from typing import Literal, cast
 import pandas as pd
 import streamlit as st
 
-from kpi.fmt import change, count, money, money2
+from kpi.fmt import change, count, grouped, money, money2, rounded
 from kpi.models import ALL, FLAG_LABELS, OUTSIDE_UK
 from views.ui import flag_line, header, strip
 
@@ -27,33 +27,6 @@ PLAIN = {
 
 s = header("Overview")
 w = s.selected
-strip(
-    "How did the selected week go, and does anything need a look?",
-    s.headline,
-    "No sales this week. Pick another week in the sidebar."
-    if w.product_lines == 0
-    else f"Open Flag details below: {', '.join(FLAG_LABELS[f.rule] for f in w.flags)}."
-    if w.flags
-    else "Nothing flagged. Scan the top products and countries, then switch weeks in the sidebar.",
-)
-
-week, pill = st.columns([4, 1], vertical_alignment="center")
-week.markdown(
-    f"#### Week {w.week_start} – {w.week_start + timedelta(days=6)} · {s.filters.country}"
-)
-n = len(w.flags)
-with pill.container(key="pill"):
-    st.markdown(
-        f":orange-badge[▲ {n} flag{'s' if n > 1 else ''}]"
-        if n
-        else ":green-badge[● All clear]"
-    )
-if n:
-    with st.expander("Flag details"):
-        st.markdown(
-            "\n".join(flag_line(f, "- **{label}** · {reason}") for f in w.flags)
-        )
-
 recent = [x for x in s.weeks if x.week_start <= w.week_start][-12:]
 base_week = w.week_start - YEAR
 partial = any(f.rule == "partial_week" for f in w.flags)
@@ -96,6 +69,74 @@ big: list[
         money2,
     ),
 ]
+small: list[tuple[str, str, float | None, str, Literal["normal", "inverse"]]] = [
+    ("Gross revenue", money(w.revenue), w.revenue_wow, "revenue", "normal"),
+    ("Units", count(w.units), w.units_wow, "units", "normal"),
+    ("Customers", count(w.customers), w.customers_wow, "customers", "normal"),
+    (
+        "New customers",
+        count(w.new_customers),
+        w.new_customers_wow,
+        "new_customers",
+        "normal",
+    ),
+    (
+        "Returning customers",
+        count(w.returning_customers),
+        w.returning_customers_wow,
+        "returning_customers",
+        "normal",
+    ),
+    (
+        "Cancelled",
+        money(w.cancelled_value),
+        w.cancelled_value_wow,
+        "cancelled_value",
+        "inverse",
+    ),
+]
+moves = [
+    (label, wow, rounded(wow, "0.1"))
+    for label, wow in [(b[0], b[4]) for b in big] + [(c[0], c[2]) for c in small]
+    if wow is not None and label != "Cancelled"
+]
+if w.product_lines == 0:
+    now = "No sales this week."
+elif not moves:
+    now = "No comparison with last week."
+else:
+    biggest = max(moves, key=lambda m: abs(m[2]))
+    others = [abs(m[2]) for m in moves if m is not biggest]
+    now = f"Biggest move vs last week: {biggest[0]} {change(biggest[1])}" + (
+        f"; the other cards moved within ±{grouped(max(others))}%." if others else "."
+    )
+strip(
+    "How did the selected week go, and does anything need a look?",
+    now,
+    "Pick another week in the sidebar."
+    if w.product_lines == 0
+    else f"Read the flag details below: {', '.join(FLAG_LABELS[f.rule] for f in w.flags)}."
+    if w.flags
+    else "Nothing flagged. Scan the top products and countries, then switch weeks in the sidebar.",
+)
+
+week, pill = st.columns([4, 1], vertical_alignment="center")
+week.markdown(
+    f"#### Week {w.week_start} – {w.week_start + timedelta(days=6)} · {s.filters.country}"
+)
+n = len(w.flags)
+with pill.container(key="pill"):
+    st.markdown(
+        f":orange-badge[▲ {n} flag{'s' if n > 1 else ''}]"
+        if n
+        else ":green-badge[● All clear]"
+    )
+if n:
+    with st.expander("Flag details", expanded=True):
+        st.markdown(
+            "\n".join(flag_line(f, "- **{label}** · {reason}") for f in w.flags)
+        )
+
 with st.container(key="big"):
     for col, (label, k, text, value, wow, yoy, fmt) in zip(
         st.columns(3, gap="small"), big, strict=True
@@ -132,36 +173,11 @@ with st.container(key="big"):
                 + (f", {fmt(value / (1 + yoy / 100))}." if yoy != -100 else "."),
             )
 
-small: list[tuple[str, str, str, str, Literal["normal", "inverse"]]] = [
-    ("Gross revenue", money(w.revenue), change(w.revenue_wow), "revenue", "normal"),
-    ("Units", count(w.units), change(w.units_wow), "units", "normal"),
-    ("Customers", count(w.customers), change(w.customers_wow), "customers", "normal"),
-    (
-        "New customers",
-        count(w.new_customers),
-        change(w.new_customers_wow),
-        "new_customers",
-        "normal",
-    ),
-    (
-        "Returning customers",
-        count(w.returning_customers),
-        change(w.returning_customers_wow),
-        "returning_customers",
-        "normal",
-    ),
-    (
-        "Cancelled",
-        money(w.cancelled_value),
-        change(w.cancelled_value_wow),
-        "cancelled_value",
-        "inverse",
-    ),
-]
 with st.container(key="small"):
-    for col, (label, value_text, delta, k, color) in zip(
+    for col, (label, value_text, wow, k, color) in zip(
         st.columns(len(small), gap="small"), small, strict=True
     ):
+        delta = change(wow)
         none = delta == "n/a"
         col.metric(
             label,
