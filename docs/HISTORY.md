@@ -15,7 +15,7 @@ Dates are 2026-11-09 to 2026-11-11. PR numbers refer to this repository.
 | Spec | `specs/retail-kpi-dashboard.md`, status approved, AC-01..AC-53 with 4 removed (AC-07, AC-21, AC-25, AC-26), so 49 active; 31 locked decisions (DEC-01..DEC-31) |
 | Tests | 49 acceptance tests; 418 unit tests for PART-A (build, core) and 607 for PART-B (app, AppTest); `make check` = 1 025 passed, 10 skipped |
 | Data | `data/derived/` (2 MB parquet + json, no customer ids) is committed; the raw xlsx is gitignored and downloaded with a SHA-256 check |
-| Live URL | _not deployed yet_ (Streamlit Community Cloud steps prepared in `docs/deploy-streamlit-cloud.md`; the deploy needs the owner's login) |
+| Live URL | https://retail-kpi-dashboard.streamlit.app (Streamlit Community Cloud, deployed 11 Nov 2026 from `main`; redeploys on every push; sleeps when idle, first visit wakes it in under a minute) |
 | Open PRs | #2, a Dependabot bump of a CI action, left open on purpose (dependency changes need the owner) |
 
 | Task | Command |
@@ -88,7 +88,7 @@ Real-data check values (full year, All countries):
 | Monday email digest | Later | Outbound sending needs the owner's explicit yes |
 | Margin, stock, targets | Dropped | No such data; the Methodology "With your data" line covers it |
 | Walkthrough video | Later | The owner records it |
-| Streamlit Community Cloud deploy | Later | Needs the owner's login; steps in `docs/deploy-streamlit-cloud.md` |
+| Streamlit Community Cloud deploy | Done 11 Nov | Live at https://retail-kpi-dashboard.streamlit.app |
 | Dependabot PR #2 | Open | Dependency and CI changes need the owner |
 
 ## 5. Gotchas
@@ -133,7 +133,7 @@ The process that built every round:
 | `views/*.py`, `views/ui.py`, `app.py` | Pages, the shared header, strip and flag lines, sidebar |
 | `kpi/theme.py`, `assets/style.css`, `.streamlit/config.toml` | Graphite tokens, CSS, Plotly template |
 | `docs/test-cases.md` | Hand calculations behind the fixture ACs |
-| `docs/deploy-streamlit-cloud.md` | Deploy steps (not deployed) |
+| `docs/deploy-streamlit-cloud.md` | Deploy steps (deployed 11 Nov) |
 
 To pick up a "later" item:
 - **Monday email digest:** the core already has every number and the strip texts; it needs an outbound channel, so get the owner's yes first, then spec it as a new PART.

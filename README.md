@@ -1,5 +1,7 @@
 # Retail KPI dashboard
 
+**Live demo:** https://retail-kpi-dashboard.streamlit.app
+
 A weekly KPI review for an online retailer, built in Streamlit on 53 weeks of real transactions (UCI Online Retail II, Dec 2010 – Dec 2011).
 
 **The team task it replaces:** every Monday an ops manager pulls last week's sales into a spreadsheet: revenue, orders, average order value, cancellations, new vs returning customers, top products and countries, what changed and what looks odd. This app does that review in one place. Every number is computed in code, traceable to its formula and inputs, and the same on every page.
