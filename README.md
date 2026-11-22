@@ -2,9 +2,9 @@
 
 **Live demo:** https://retail-kpi-dashboard.streamlit.app
 
-**Demo video (≈1 min):** click the poster to play it.
+**Demo video (≈1 min):**
 
-[![retail-kpi-dashboard demo video](docs/demo/retail-kpi-dashboard-poster.png)](docs/demo/retail-kpi-dashboard-demo.mp4)
+https://github.com/user-attachments/assets/8d7d46f6-24f8-485d-aea7-288e89dbd651
 
 A weekly KPI review for an online retailer, built in Streamlit on 53 weeks of real transactions (UCI Online Retail II, Dec 2010 – Dec 2011).
 
