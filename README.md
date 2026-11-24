@@ -1,6 +1,6 @@
 # Retail KPI dashboard
 
-**Live demo:** https://retail-kpi-dashboard.streamlit.app
+**Live demo:** https://retail-kpi-dashboard-214227070697.europe-north1.run.app
 
 **Demo video (≈1 min):**
 
